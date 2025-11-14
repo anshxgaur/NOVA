@@ -8,48 +8,23 @@ import pywhatkit as pkit
 import psutil
 import pyautogui
 import pygetwindow as gw
+import wikipedia
+
 from datetime import datetime
 from ctypes import POINTER, cast
 from pynput.keyboard import Controller
-
-# Optional modules
 try:
     from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    from pycaw.pycaw import 2w, IAudioEndpointVolume
     HAS_PYCAW = True
 except ImportError:
     HAS_PYCAW = False
-import os
-import subprocess
-import webbrowser
-import requests
-import pyttsx3
-import speech_recognition as sr
-import pywhatkit as pkit
-import psutil
-import pyautogui
-import pygetwindow as gw
-from datetime import datetime
-from ctypes import POINTER, cast
-from pynput.keyboard import Controller
-
-# Optional modules
-try:
-    from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-    HAS_PYCAW = True
-except ImportError:
-    HAS_PYCAW = False
-
 try:
     import screen_brightness_control as sbc
     HAS_BRIGHTNESS = True
 except ImportError:
     HAS_BRIGHTNESS = False
 
-# ---------------------------
-# Initialization
-# ---------------------------
 engine = pyttsx3.init()
 engine.setProperty('rate', 150)
 keyboard = Controller()
@@ -91,25 +66,7 @@ def speechrecognition():
             speak("Speech service unavailable.")
         except Exception:
             pass
-    return ""
-
-def get_weather(city):
-    """Fetch weather info from OpenWeather API."""
-    api_key = "YOUR_API_KEY"  # Replace with your OpenWeatherMap API key
-    if api_key == "YOUR_API_KEY":
-        return "Weather API key not set."
-    try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
-        response = requests.get(url, timeout=5)
-        data = response.json()
-        if data.get("cod") != "404":
-            temp = data["main"]["temp"]
-            desc = data["weather"][0]["description"]
-            return f"The temperature in {city} is {temp}°C with {desc}."
-        else:
-            return "City not found."
-    except Exception:
-        return "Unable to fetch weather."
+    return "
 
 def play_youtube_video(query):
     """Play a YouTube video by query."""
@@ -191,6 +148,15 @@ def move_mouse_to_coordinates():
     else:
         speak("Coordinates out of bounds.")
 
+def search_wikipedia(topic):
+    """Search Wikipedia and speak a brief summary about the topic."""
+    try:
+        summary = wikipedia.summary(topic, sentences=2)
+        speak(summary)
+    except Exception as e:
+        speak("Sorry, I could not find information on that topic.")
+        print(f"Wikipedia error: {e}")
+
 def minimize_all_windows():
     try:
         for w in gw.getAllWindows():
@@ -217,6 +183,19 @@ def maximize_window():
 def MainExecution(query):
     if "hello" in query:
         speak("Hello Ansh, I am Nova. How may I assist you?")
+    elif "search wikipedia for" in query:
+        topic = query.replace("search wikipedia for", "").strip()
+        if topic:
+            search_wikipedia(topic)
+        else:
+            speak("Please specify a topic to search on Wikipedia.")
+    elif "wikipedia" in query:
+        # optionally also handle "wikipedia [topic]"
+        topic = query.replace("wikipedia", "").strip()
+        if topic:
+            search_wikipedia(topic)
+        else:
+            speak("Please specify a topic to search on Wikipedia.")
     elif "bye" in query:
         speak("Have a nice day!")
     elif "capital of india" in query:
@@ -233,8 +212,7 @@ def MainExecution(query):
     elif "open google" in query:
         speak("Opening Google")
         webbrowser.open("https://www.google.com")
-    elif "weather of kanpur" in query:
-        speak(get_weather("Kanpur"))
+
     elif "play youtube" in query:
         speak("Tell me the name of the video or song you would like to play")
         video_url = speechrecognition()
