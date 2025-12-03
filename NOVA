@@ -15,7 +15,7 @@ from ctypes import POINTER, cast
 from pynput.keyboard import Controller
 try:
     from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import 2w, IAudioEndpointVolume
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
     HAS_PYCAW = True
 except ImportError:
     HAS_PYCAW = False
@@ -66,7 +66,7 @@ def speechrecognition():
             speak("Speech service unavailable.")
         except Exception:
             pass
-    return "
+    return ""
 
 def play_youtube_video(query):
     """Play a YouTube video by query."""
