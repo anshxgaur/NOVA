@@ -18,7 +18,7 @@ Nova is a Python-based voice assistant designed to automate everyday tasks using
 - 🌍 **App & URL Launching**: Open apps or websites like YouTube and Google.
 - 🧠 **Conversational Responses**: Friendly greetings, time queries, and graceful exits.
 
-## 🛠️ Technologies Used
+## 🛠️ modules used
 
 - `speech_recognition` – Captures and processes voice input
 - `pyttsx3` – Text-to-speech engine
