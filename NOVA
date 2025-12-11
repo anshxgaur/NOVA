@@ -8,24 +8,38 @@ import pywhatkit as pkit
 import psutil
 import pyautogui
 import pygetwindow as gw
-import wikipedia
-
 from datetime import datetime
 from ctypes import POINTER, cast
 from pynput.keyboard import Controller
+import platform
+
+# Optional modules
 try:
     from comtypes import CLSCTX_ALL
     from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
     HAS_PYCAW = True
 except ImportError:
     HAS_PYCAW = False
+
 try:
     import screen_brightness_control as sbc
     HAS_BRIGHTNESS = True
 except ImportError:
     HAS_BRIGHTNESS = False
 
-engine = pyttsx3.init()
+# ---------------------------
+# Initialization
+# ---------------------------
+
+# Choose correct TTS driver for your OS
+system = platform.system()
+if system == "Windows":
+    engine = pyttsx3.init("sapi5")
+elif system == "Darwin":  # macOS
+    engine = pyttsx3.init("nsss")
+else:  # Linux and others
+    engine = pyttsx3.init("espeak")
+
 engine.setProperty('rate', 150)
 keyboard = Controller()
 
@@ -38,11 +52,11 @@ if HAS_PYCAW:
     except Exception:
         volume_iface = None
 
-
-
+# ---------------------------
 # Core Functions
 # ---------------------------
-def speak(text):
+
+def speak(text: str):
     """Speak and print text."""
     print(f"[Nova] {text}")
     try:
@@ -51,7 +65,7 @@ def speak(text):
     except Exception as e:
         print("[Speak error]", e)
 
-def speechrecognition():
+def speechrecognition() -> str:
     """Capture voice input and return recognized text."""
     r = sr.Recognizer()
     with sr.Microphone() as source:
@@ -60,16 +74,36 @@ def speechrecognition():
         try:
             audio = r.listen(source, timeout=8, phrase_time_limit=5)
             query = r.recognize_google(audio).lower()
+            print(f"[User] {query}")
             return query
         except sr.UnknownValueError:
             speak("Sorry, I could not understand.")
         except sr.RequestError:
             speak("Speech service unavailable.")
-        except Exception:
-            pass
+        except Exception as e:
+            print("[Speech error]", e)
     return ""
 
-def play_youtube_video(query):
+def get_weather(city: str) -> str:
+    """Fetch weather info from OpenWeather API."""
+    api_key = "YOUR_API_KEY"  # Replace with your OpenWeatherMap API key
+    if api_key == "YOUR_API_KEY":
+        return "Weather API key not set."
+    try:
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        if str(data.get("cod")) != "404":
+            temp = data["main"]["temp"]
+            desc = data["weather"][0]["description"]
+            return f"The temperature in {city} is {temp}°C with {desc}."
+        else:
+            return "City not found."
+    except Exception as e:
+        print("[Weather error]", e)
+        return "Unable to fetch weather."
+
+def play_youtube_video(query: str):
     """Play a YouTube video by query."""
     if query:
         try:
@@ -77,14 +111,17 @@ def play_youtube_video(query):
             speak(f"Playing {query} on YouTube")
         except Exception:
             speak("Couldn't play that. Opening YouTube search.")
-            webbrowser.open("https://www.youtube.com/results?search_query=" + query.replace(" ", "+"))
+            webbrowser.open(
+                "https://www.youtube.com/results?search_query=" + query.replace(" ", "+")
+            )
 
 def close_youtube():
     """Close browser processes that may be playing YouTube."""
     closed = False
     for p in psutil.process_iter(attrs=['name']):
         try:
-            if any(b in p.info['name'].lower() for b in ["chrome", "msedge", "brave", "firefox"]):
+            name = p.info['name']
+            if name and any(b in name.lower() for b in ["chrome", "msedge", "brave", "firefox"]):
                 p.kill()
                 closed = True
         except Exception:
@@ -136,9 +173,11 @@ def decrease_brightness():
 def move_mouse_to_coordinates():
     speak("Say the X coordinate.")
     try:
-        x = int(speechrecognition())
+        x_str = speechrecognition()
+        x = int(x_str)
         speak("Say the Y coordinate.")
-        y = int(speechrecognition())
+        y_str = speechrecognition()
+        y = int(y_str)
     except Exception:
         speak("Invalid coordinates.")
         return
@@ -148,15 +187,6 @@ def move_mouse_to_coordinates():
         speak(f"Mouse moved to {x}, {y}.")
     else:
         speak("Coordinates out of bounds.")
-
-def search_wikipedia(topic):
-    """Search Wikipedia and speak a brief summary about the topic."""
-    try:
-        summary = wikipedia.summary(topic, sentences=2)
-        speak(summary)
-    except Exception as e:
-        speak("Sorry, I could not find information on that topic.")
-        print(f"Wikipedia error: {e}")
 
 def minimize_all_windows():
     try:
@@ -181,22 +211,10 @@ def maximize_window():
 # ---------------------------
 # Command Dispatcher
 # ---------------------------
-def MainExecution(query):
+
+def MainExecution(query: str):
     if "hello" in query:
         speak("Hello Ansh, I am Nova. How may I assist you?")
-    elif "search wikipedia for" in query:
-        topic = query.replace("search wikipedia for", "").strip()
-        if topic:
-            search_wikipedia(topic)
-        else:
-            speak("Please specify a topic to search on Wikipedia.")
-    elif "wikipedia" in query:
-        # optionally also handle "wikipedia [topic]"
-        topic = query.replace("wikipedia", "").strip()
-        if topic:
-            search_wikipedia(topic)
-        else:
-            speak("Please specify a topic to search on Wikipedia.")
     elif "bye" in query:
         speak("Have a nice day!")
     elif "capital of india" in query:
@@ -213,7 +231,8 @@ def MainExecution(query):
     elif "open google" in query:
         speak("Opening Google")
         webbrowser.open("https://www.google.com")
-
+    elif "weather of kanpur" in query:
+        speak(get_weather("Kanpur"))
     elif "play youtube" in query:
         speak("Tell me the name of the video or song you would like to play")
         video_url = speechrecognition()
@@ -235,10 +254,9 @@ def MainExecution(query):
     else:
         speak("I didn't understand that.")
 
-# ---------------------------
-# Trigger (Optional for CLI)
-# ---------------------------
+
 if __name__ == "__main__":
+    speak("Nova is now active.")
     user_query = speechrecognition()
     if user_query:
         MainExecution(user_query)
