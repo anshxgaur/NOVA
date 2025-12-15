@@ -35,6 +35,6 @@ Nova is a Python-based voice assistant designed to automate everyday tasks using
 
 ## 🧑‍💻 How to Run
 
-1. **Install dependencies**:
+1. **Install dependencies
    ```bash
    pip install -r requirements.txt
