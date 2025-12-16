@@ -209,7 +209,6 @@ def maximize_window():
 
 # ---------------------------
 # Command Dispatcher
-# ---------------------------
 
 def MainExecution(query: str):
     if "hello" in query:
