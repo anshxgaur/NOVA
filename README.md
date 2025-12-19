@@ -1,7 +1,7 @@
 # NOVA
 # 🗣️ Nova - Your Personal Voice Assistant
 
-Nova is a Python-based voice assistant designed to automate everyday tasks using natural speech. From controlling system volume and brightness to searching the web, typing text, and playing YouTube videos — Nova listens, understands, and acts.
+Nova is a Python-based voice assistant designed to automate everyday tasks using natural speech. From controlling system volume and brightness to searching the web, typing text, and playing YouTube videos — Nova listens, understands,and acts.
 
 ## 🚀 Features
 
