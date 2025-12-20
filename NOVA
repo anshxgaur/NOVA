@@ -53,7 +53,7 @@ if HAS_PYCAW:
 
 # ---------------------------
 # Core Functions
-# ---------------------------
+# -------------------------
 
 def speak(text: str):
     """Speak and print text."""
