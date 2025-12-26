@@ -10,7 +10,7 @@ Nova is a Python-based voice assistant designed to automate everyday tasks using
 - 💡 **Brightness Control**: Adjust screen brightness dynamically.
 - 📺 **YouTube Playback**: Play videos or songs directly via voice.
 - 🌐 **Web Search**: Search Google or Wikipedia and read summaries aloud.
-- 🖱️ **Mouse Control**: Move cursor to spoken coordinates.
+- 🖱️ **Mouse Control**: Move cursor with spoken coordinates.
 - ⌨️ **Keyboard Typing**: Type dictated text into active window.
 - 📊 **Data Plotting**: Generate and save line plots from spoken numeric input.
 - 🖥️ **Window Management**: Minimize or maximize windows on command.
