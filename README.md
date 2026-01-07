@@ -15,7 +15,7 @@ Nova is a Python-based voice assistant designed to automate everyday tasks using
 - 📊 **Data Plotting**: Generate and save line plots from spoken numeric input.
 - 🖥️ **Window Management**: Minimize or maximize windows on command.
 - 🔌 **System Commands**: Shutdown PC via voice.
-- 🌍 **App & URL Launching**: Open apps or websites like YouTube and Google.
+- 🌍 **App & URL Launching**: Open apps or websites like YouTube and Googlee.
 - 🧠 **Conversational Responses**: Friendly greetings, time queries, and graceful exits.
 
 ## 🛠️ modules used
