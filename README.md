@@ -1,3 +1,6 @@
+<p align="center">
+  <img src="nova.png" alt="NOVA" width="900"/>
+</p>
 # NOVA
 # 🗣️ Nova - Your Personal Voice Assistant
 
