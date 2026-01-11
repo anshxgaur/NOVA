@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nova Villain Interface</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      color: #00eaff;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .top-left, .top-right, .top-center {
+      position: absolute;
+      top: 15px;
+      font-size: 1.2rem;
+      color: #00eaff;
+      z-index: 10;
+    }
+
+    .top-left { left: 30px; }
+    .top-right { right: 30px; }
+    .top-center {
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.1rem;
+      text-shadow: 0 0 6px #00eaff66;
+    }
+
+    /* Outer Orb Ring */
+    .orb-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 400px;
+      height: 400px;
+      border: 2px dashed #00eaff33;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: spinRing 20s linear infinite;
+      z-index: 1;
+    }
+    @keyframes spinRing {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* Saturn-like Ring Element */
+    .saturn-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 320px;
+      height: 90px;
+      border: 2px solid rgba(0, 234, 255, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(35deg);
+      box-shadow: 0 0 15px rgba(0, 234, 255, 0.8);
+      z-index: 2;
+      animation: rotateRing 30s linear infinite;
+    }
+    @keyframes rotateRing {
+      0% { transform: translate(-50%, -50%) rotate(35deg); }
+      100% { transform: translate(-50%, -50%) rotate(395deg); }
+    }
+
+    /* New Additional "Cool" Ring Element */
+    .cool-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 360px;
+      height: 120px;
+      border: 1px solid rgba(0, 234, 255, 0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(-20deg);
+      box-shadow: 0 0 10px rgba(0, 234, 255, 0.6);
+      z-index: 2.5;
+      animation: rotateCoolRing 25s linear infinite reverse;
+    }
+    @keyframes rotateCoolRing {
+      0% { transform: translate(-50%, -50%) rotate(-20deg); }
+      100% { transform: translate(-50%, -50%) rotate(-380deg); }
+    }
+
+    /* Center Glowing Circle */
+    .glow-circle {
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #00eaff 30%, #003344 90%);
+      box-shadow: 0 0 50px rgba(0, 234, 255, 0.8), 0 0 80px rgba(0, 234, 255, 0.4);
+      z-index: 3;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: breathe 4s ease-in-out infinite;
+    }
+    @keyframes breathe {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    }
+
+    .quote {
+      position: absolute;
+      bottom: 30px;
+      font-size: 1.2rem;
+      color: #ff002b;
+      text-align: center;
+      z-index: 10;
+      text-shadow: 0 0 8px rgba(255, 0, 0, 0.7);
+      animation: flicker 3s infinite;
+      width: 100%;
+    }
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .audio-bars {
+      position: absolute;
+      bottom: 60px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .bar {
+      width: 6px;
+      height: 20px;
+      background: #00eaff;
+      animation: pulse 1s infinite ease-in-out alternate;
+    }
+    .bar:nth-child(2) { animation-delay: 0.1s; }
+    .bar:nth-child(3) { animation-delay: 0.2s; }
+    .bar:nth-child(4) { animation-delay: 0.3s; }
+    .bar:nth-child(5) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0% { height: 10px; opacity: 0.4; }
+      100% { height: 30px; opacity: 1; }
+    }
+
+    .container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      background: radial-gradient(circle at center, #01010a 20%, #000 80%);
+      overflow: hidden;
+    }
+
+    .binary-box {
+      position: absolute;
+      right: 40px;
+      top: 160px;
+      width: 245px;
+      height: 420px;
+      background-color: rgba(0, 255, 255, 0.08);
+      border: 2px solid #00eaff33;
+      overflow: hidden;
+      color: #0ff;
+      font-size: 0.8rem;
+      line-height: 1rem;
+      padding: 8px;
+      font-family: monospace;
+      z-index: 10;
+    }
+
+    .binary-content {
+      display: inline-block;
+      white-space: pre;
+      animation: scrollBinary 30s linear infinite;
+    }
+    @keyframes scrollBinary {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-50%); }
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .pulse-wave {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 300px;
+      width: 2px;
+      background: linear-gradient(to bottom, #00eaff88, transparent 70%);
+      animation: pulseWaveAnim 2s linear infinite;
+      z-index: 10;
+    }
+    @keyframes pulseWaveAnim {
+      0% { height: 50px; opacity: 0.2; }
+      50% { height: 300px; opacity: 1; }
+      100% { height: 50px; opacity: 0.2; }
+    }
+
+    .floating-box {
+      position: absolute;
+      width: 120px;
+      height: auto;
+      padding: 8px;
+      background: rgba(0, 234, 255, 0.05);
+      border: 1px solid #00eaff22;
+      box-shadow: 0 0 6px rgba(0, 234, 255, 0.2);
+      font-size: 0.75rem;
+      color: #00eaff;
+      z-index: 10;
+    }
+
+    .left-info {
+      top: 55%;
+      left: 20px;
+      transform: translateY(-50%);
+    }
+
+    .right-info {
+      bottom: 30px;
+      right: 20px;
+    }
+
+    .floating-box .label {
+      font-weight: bold;
+      margin-bottom: 4px;
+      text-shadow: 0 0 3px #00eaff44;
+    }
+
+    .blip-dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background-color: #00eaff;
+      border-radius: 50%;
+      animation: blink 2s infinite alternate;
+    }
+    @keyframes blink {
+      0% { opacity: 0.1; transform: scale(1); }
+      100% { opacity: 1; transform: scale(1.5); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-left">NOVA INTERFACE</div>
+    <div class="top-center" id="liveClock">00:00:00</div>
+    <div class="top-right">11:30</div>
+
+    <div class="orb-ring"></div>
+    <!-- Saturn-like ring -->
+    <div class="saturn-ring"></div>
+    <!-- New additional cool ring -->
+    <div class="cool-ring"></div>
+    <div class="glow-circle"></div>
+
+    <div class="audio-bars">
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+
+    <div class="quote">I AM NOVA AND YOU HAVE ENTERED MY WORLD</div>
+
+    <div class="binary-box">
+      <div class="binary-content" id="binaryContent">
+        <!-- Binary will be generated here -->
+      </div>
+    </div>
+
+    <div class="pulse-wave"></div>
+
+    <div class="floating-box left-info">
+      <div class="label">Subsystem</div>
+      <div class="value">Scan: Active</div>
+    </div>
+
+    <div class="floating-box right-info">
+      <div class="label">AI Sync</div>
+      <div class="value">93.2%</div>
+    </div>
+
+    <!-- Blip-dots in a circular pattern -->
+    <div class="blip-dot" style="top: 10%; left: 70%; animation-delay: 1.2s;"></div>
+    <div class="blip-dot" style="top: 80%; left: 25%; animation-delay: 2.6s;"></div>
+    <div class="blip-dot" style="top: 10%; left: 25%; animation-delay: 1.5s;"></div>
+    <div class="blip-dot" style="top: 80%; left: 70%; animation-delay: 2.9s;"></div>
+
+    <div class="sine-box">
+      <canvas id="sineCanvas"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // Binary generation
+    const binaryDiv = document.getElementById("binaryContent");
+    function generateBinary(lines = 500, width = 36) {
+      let content = '';
+      for (let i = 0; i < lines; i++) {
+        content += Array(width).fill(0).map(() => Math.random() > 0.5 ? '1' : '0').join('') + '\n';
+      }
+      binaryDiv.textContent = content + content;
+    }
+    generateBinary(500, 34);
+
+    // Live Clock
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      document.getElementById('liveClock').textContent = `${h}:${m}:${s}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
