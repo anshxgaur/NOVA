@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Nova Villain Interface</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #000;
+      color: #00eaff;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .top-left, .top-right, .top-center {
+      position: absolute;
+      top: 15px;
+      font-size: 1.2rem;
+      color: #00eaff;
+      z-index: 10;
+    }
+
+    .top-left { left: 30px; }
+    .top-right { right: 30px; }
+    .top-center {
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.1rem;
+      text-shadow: 0 0 6px #00eaff66;
+    }
+
+    .date-display {
+      position: absolute;
+      top: 45px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.8rem;
+      color: #00ff88;
+      text-shadow: 0 0 4px #00ff8866;
+      z-index: 10;
+    }
+
+    /* Outer Orb Ring */
+    .orb-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 400px;
+      height: 400px;
+      border: 2px dashed #00eaff33;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: spinRing 20s linear infinite;
+      z-index: 1;
+    }
+    @keyframes spinRing {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* Saturn-like Ring */
+    .saturn-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 320px;
+      height: 90px;
+      border: 2px solid rgba(0, 234, 255, 0.8);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(35deg);
+      box-shadow: 0 0 15px rgba(0, 234, 255, 0.8);
+      z-index: 2;
+      animation: rotateRing 30s linear infinite;
+    }
+    @keyframes rotateRing {
+      0% { transform: translate(-50%, -50%) rotate(35deg); }
+      100% { transform: translate(-50%, -50%) rotate(395deg); }
+    }
+
+    /* Cool Ring */
+    .cool-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 360px;
+      height: 120px;
+      border: 1px solid rgba(0, 234, 255, 0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) rotate(-20deg);
+      box-shadow: 0 0 10px rgba(0, 234, 255, 0.6);
+      z-index: 2.5;
+      animation: rotateCoolRing 25s linear infinite reverse;
+    }
+    @keyframes rotateCoolRing {
+      0% { transform: translate(-50%, -50%) rotate(-20deg); }
+      100% { transform: translate(-50%, -50%) rotate(-380deg); }
+    }
+
+    /* Glow Circle */
+    .glow-circle {
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center, #00eaff 30%, #003344 90%);
+      box-shadow: 0 0 50px rgba(0, 234, 255, 0.8), 0 0 80px rgba(0, 234, 255, 0.4);
+      z-index: 3;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: breathe 4s ease-in-out infinite;
+    }
+    @keyframes breathe {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    }
+
+    /* Radar Scanner */
+    #radarCanvas {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      opacity: 0.3;
+      z-index: 2.8;
+    }
+
+    .quote {
+      position: absolute;
+      bottom: 30px;
+      font-size: 1.4rem;
+      color: #ff002b;
+      text-align: center;
+      z-index: 10;
+      text-shadow: 0 0 8px rgba(255, 0, 43, 0.7);
+      animation: glitch 2s infinite, flicker 3s infinite;
+      width: 100%;
+      font-weight: 500;
+    }
+    @keyframes glitch {
+      0%, 100% { transform: translate(0); }
+      10% { transform: translate(-1px, 1px); color: #ff00ff; }
+      20% { transform: translate(1px, -1px); color: #00ffff; }
+      30% { transform: translate(-2px, 2px); }
+      40% { transform: translate(-1px, -2px); }
+      50% { transform: translate(2px, 1px); }
+    }
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .audio-bars {
+      position: absolute;
+      bottom: 100px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .bar {
+      width: 6px;
+      height: 20px;
+      background: #00eaff;
+      animation: pulse 1s infinite ease-in-out alternate;
+    }
+    .bar:nth-child(2) { animation-delay: 0.1s; }
+    .bar:nth-child(3) { animation-delay: 0.2s; }
+    .bar:nth-child(4) { animation-delay: 0.3s; }
+    .bar:nth-child(5) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0% { height: 10px; opacity: 0.4; }
+      100% { height: 40px; opacity: 1; }
+    }
+
+    .container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      background: radial-gradient(circle at center, #01010a 20%, #000 80%);
+      overflow: hidden;
+    }
+
+    canvas#particlesCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 0;
+    }
+
+    .binary-box {
+      position: absolute;
+      right: 20px;
+      top: 160px;
+      width: 240px;
+      height: 380px;
+      background-color: rgba(0, 255, 255, 0.08);
+      border: 2px solid #00eaff33;
+      overflow: hidden;
+      color: #0ff;
+      font-size: 0.75rem;
+      line-height: 0.95rem;
+      padding: 8px;
+      font-family: monospace;
+      z-index: 10;
+      border-radius: 8px;
+    }
+
+    .binary-content {
+      display: inline-block;
+      white-space: pre;
+      animation: scrollBinary 35s linear infinite;
+    }
+    @keyframes scrollBinary {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-50%); }
+    }
+
+    .pulse-wave {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 300px;
+      width: 2px;
+      background: linear-gradient(to bottom, #00eaff88, transparent 70%);
+      animation: pulseWaveAnim 2s linear infinite;
+      z-index: 10;
+    }
+    @keyframes pulseWaveAnim {
+      0% { height: 50px; opacity: 0.2; }
+      50% { height: 300px; opacity: 1; }
+      100% { height: 50px; opacity: 0.2; }
+    }
+
+    .floating-box {
+      position: absolute;
+      width: 140px;
+      height: auto;
+      padding: 12px;
+      background: rgba(0, 234, 255, 0.08);
+      border: 1px solid #00eaff44;
+      box-shadow: 0 0 12px rgba(0, 234, 255, 0.3);
+      font-size: 0.8rem;
+      color: #00eaff;
+      z-index: 10;
+      border-radius: 6px;
+      opacity: 0;
+      animation: fadeIn 1s forwards;
+    }
+
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    .left-info {
+      top: 55%;
+      left: 20px;
+      transform: translateY(-50%);
+    }
+
+    .right-info {
+      bottom: 30px;
+      right: 20px;
+    }
+
+    .floating-box .label {
+      font-weight: bold;
+      margin-bottom: 6px;
+      text-shadow: 0 0 4px #00eaff66;
+      font-size: 0.85rem;
+    }
+
+    .floating-box .value {
+      font-family: monospace;
+      border-left: 2px solid #00eaff44;
+      padding-left: 6px;
+    }
+
+    .blip-dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background-color: #00eaff;
+      border-radius: 50%;
+      animation: blink 2s infinite alternate;
+      box-shadow: 0 0 8px #00eaff80;
+    }
+    @keyframes blink {
+      0% { opacity: 0.2; transform: scale(1); }
+      100% { opacity: 1; transform: scale(1.6); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .orb-ring, .saturn-ring, .cool-ring, .glow-circle { transform: translate(-50%, -50%) scale(0.8); }
+      .binary-box { right: 10px; width: 200px; font-size: 0.7rem; }
+      .quote { font-size: 1.1rem; bottom: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-left">NOVA INTERFACE v2.0</div>
+    <div class="top-center" id="liveClock">00:00:00</div>
+    <div class="date-display" id="liveDate"></div>
+    <div class="top-right">SECURE LINK</div>
+
+    <canvas id="particlesCanvas"></canvas>
+    <canvas id="radarCanvas" width="300" height="300"></canvas>
+
+    <div class="orb-ring"></div>
+    <div class="saturn-ring"></div>
+    <div class="cool-ring"></div>
+    <div class="glow-circle"></div>
+
+    <div class="audio-bars">
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+      <div class="bar"></div>
+    </div>
+
+    <div class="quote" id="glitchQuote">I AM NOVA AND YOU HAVE ENTERED MY WORLD</div>
+
+    <div class="binary-box">
+      <div class="binary-content" id="binaryContent"></div>
+    </div>
+
+    <div class="pulse-wave"></div>
+
+    <div class="floating-box left-info" id="leftStatus">
+      <div class="label">SUBSYSTEM</div>
+      <div class="value" id="leftValue">Scan: Active</div>
+    </div>
+
+    <div class="floating-box right-info" id="rightStatus">
+      <div class="label">AI SYNC</div>
+      <div class="value" id="rightValue">93.2%</div>
+    </div>
+
+    <!-- More blips for radar feel -->
+    <div class="blip-dot" style="top: 15%; left: 75%; animation-delay: 0.5s;"></div>
+    <div class="blip-dot" style="top: 75%; left: 20%; animation-delay: 1.0s;"></div>
+    <div class="blip-dot" style="top: 20%; left: 20%; animation-delay: 1.8s;"></div>
+    <div class="blip-dot" style="top: 75%; left: 75%; animation-delay: 2.3s;"></div>
+    <div class="blip-dot" style="top: 50%; left: 85%; animation-delay: 0.8s;"></div>
+  </div>
+
+  <script>
+    // Particles System (Stars/Background Effects)
+    const canvas = document.getElementById('particlesCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    for (let i = 0; i < 200; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 2 + 0.5,
+        brightness: Math.random()
+      });
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = p.brightness * 0.8;
+        ctx.fillStyle = '#00eaff';
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = '#00eaff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        ctx.restore();
+      });
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // Radar Scanner
+    const radarCtx = document.getElementById('radarCanvas').getContext('2d');
+    let radarAngle = 0;
+    function animateRadar() {
+      radarCtx.clearRect(0, 0, 300, 300);
+      radarCtx.strokeStyle = `rgba(0, 234, 255, 0.1)`;
+      radarCtx.lineWidth = 1;
+      radarCtx.beginPath();
+      radarCtx.arc(150, 150, 140, 0, Math.PI * 2);
+      radarCtx.stroke();
+
+      // Rotating sweep
+      const sweepOpacity = 0.4 + 0.2 * Math.sin(Date.now() * 0.005);
+      radarCtx.save();
+      radarCtx.translate(150, 150);
+      radarCtx.rotate(radarAngle);
+      radarCtx.strokeStyle = `rgba(0, 234, 255, ${sweepOpacity})`;
+      radarCtx.lineWidth = 2;
+      radarCtx.shadowBlur = 20;
+      radarCtx.shadowColor = '#00eaff';
+      radarCtx.beginPath();
+      radarCtx.moveTo(0, 0);
+      radarCtx.lineTo(140, 0);
+      radarCtx.stroke();
+      radarCtx.restore();
+
+      // Blips
+      radarCtx.fillStyle = '#00ff88';
+      for (let i = 0; i < 3; i++) {
+        const angle = (radarAngle + i * Math.PI * 2 / 3) % (Math.PI * 2);
+        const dist = 50 + Math.sin(Date.now() * 0.01 + i) * 30;
+        radarCtx.beginPath();
+        radarCtx.arc(150 + Math.cos(angle) * dist, 150 + Math.sin(angle) * dist, 3, 0, Math.PI * 2);
+        radarCtx.fill();
+      }
+
+      radarAngle += 0.03;
+      requestAnimationFrame(animateRadar);
+    }
+    animateRadar();
+
+    // Enhanced Binary
+    const binaryDiv = document.getElementById("binaryContent");
+    function generateBinary(lines = 450, width = 32) {
+      let content = '';
+      for (let i = 0; i < lines; i++) {
+        content += Array(width).fill(0).map(() => Math.random() > 0.5 ? '1' : '0').join('') + '\n';
+      }
+      binaryDiv.textContent = content + content;
+    }
+    generateBinary();
+
+    // Exact IST Time (Current: Jan 2026 context)
+    function updateClock() {
+      const now = new Date().toLocaleString('en-IN', { 
+        timeZone: 'Asia/Kolkata',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+      const [time, date] = now.split(', ');
+      document.getElementById('liveClock').textContent = time;
+      document.getElementById('liveDate').textContent = date + ' IST';
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Dynamic Status Cycling with Typing Effect
+    const statuses = [
+      { label: 'SUBSYSTEM', value: 'Neural Core: 98%' },
+      { label: 'TARGET LOCK', value: 'Hostiles: 3' },
+      { label: 'QUANTUM CPU', value: '7.2 TFLOPS' },
+      { label: 'MEMORY', value: '89/128 GB' }
+    ];
+    let statusIndex = 0;
+    function cycleStatus(side) {
+      const box = side === 'left' ? document.getElementById('leftStatus') : document.getElementById('rightStatus');
+      const label = box.querySelector('.label');
+      const value = box.querySelector('.value');
+      const current = statuses[statusIndex % statuses.length];
+      label.textContent = current.label;
+      value.textContent = '|';
+      let i = 0;
+      const typeInterval = setInterval(() => {
+        if (i < current.value.length) {
+          value.textContent = current.value.slice(0, i + 1) + '|';
+          i++;
+        } else {
+          value.textContent = current.value;
+          clearInterval(typeInterval);
+        }
+      }, 80);
+      statusIndex++;
+    }
+    setInterval(() => cycleStatus('left'), 5000);
+    setInterval(() => cycleStatus('right'), 7000);
+    cycleStatus('left');
+    cycleStatus('right');
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+  </script>
+</body>
+</html>
