@@ -27,7 +27,7 @@ try:
 except ImportError:
     HAS_BRIGHTNESS = False
 
-# ------------------
+# -----------------
 # Initialization
 
 # Choose correct TTS driver for your OS
