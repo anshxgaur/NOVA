@@ -36,7 +36,7 @@ Nova is a Python-based voice assistant designed to automate everyday tasks using
 - `pygame` – Audio initialization
 - `psutil`, `subprocess`, `webbrowser`, `datetime`, `os` – System utilities
 
-## 🧑‍💻 How to Run this program -------------
+## 🧑‍💻 How to Run this program ------------
 
 1. **Install dependencies
    ```bash
