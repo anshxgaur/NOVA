@@ -12,6 +12,10 @@ from datetime import datetime
 from ctypes import POINTER, cast
 from pynput.keyboard import Controller
 import platform
+import matplotlib.pyplot as plt
+import numpy as np
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 # Optional modules
 try:
@@ -83,6 +87,21 @@ def speechrecognition() -> str:
         except Exception as e:
             print("[Speech error]", e)
     return ""
+# Spotify Setup (Replace with your actual credentials)
+SPOTIPY_CLIENT_ID = 'YOUR_CLIENT_ID'
+SPOTIPY_CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
+SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
+
+volume_iface = None
+if HAS_PYCAW:
+    try:
+        devices = AudioUtilities.GetSpeakers()
+        iface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume_iface = cast(iface, POINTER(IAudioEndpointVolume))
+    except Exception:
+        volume_iface = None
+
+# --------------------------
 
 def get_weather(city: str) -> str:
     """Fetch weather info from OpenWeather API."""
@@ -208,6 +227,75 @@ def maximize_window():
     except Exception:
         speak("Unable to maximize window.")
 
+
+def plot_graph():
+    speak("What should I plot? You can say 'sine wave' or 'manual coordinates'.")
+    choice = speechrecognition()
+    
+    if "sine" in choice:
+        x = np.linspace(0, 10, 100)
+        y = np.sin(x)
+        plt.plot(x, y)
+        plt.title("Sine Wave")
+        plt.show()
+        speak("Plotting the sine wave now.")
+    elif "coordinates" in choice or "manual" in choice:
+        speak("Please type the X coordinates separated by commas in the console.")
+        x_input = input("Enter X values (e.g., 1,2,3): ")
+        speak("Please type the Y coordinates separated by commas in the console.")
+        y_input = input("Enter Y values (e.g., 4,5,6): ")
+        try:
+            x = [float(i) for i in x_input.split(',')]
+            y = [float(i) for i in y_input.split(',')]
+            plt.plot(x, y, marker='o')
+            plt.show()
+            speak("Graph plotted successfully.")
+        except Exception:
+            speak("Invalid coordinate format.")
+
+
+def shutdown_pc():
+    speak("Shutting down the PC in 10 seconds.")
+    if system == "Windows":
+        os.system("shutdown /s /t 10")
+    else:
+        os.system("shutdown -h now")
+
+# --- NEW: File & Folder Management ---
+def open_folder(folder_path):
+    # Expands user paths like 'Downloads'
+    path = os.path.expanduser(folder_path)
+    if os.path.exists(path):
+        if system == "Windows":
+            os.startfile(path)
+        else:
+            subprocess.show([ "open" if system == "Darwin" else "xdg-open", path])
+        speak(f"Opening folder at {folder_path}")
+    else:
+        speak("I couldn't find that folder.")
+
+def close_active_window():
+    try:
+        window = gw.getActiveWindow()
+        if window:
+            window.close()
+            speak("Window closed.")
+    except Exception:
+        speak("I couldn't close the window.")
+
+# --- NEW: Spotify Music ---
+def play_spotify():
+    try:
+        scope = "user-modify-playback-state user-read-playback-state"
+        sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
+                                               client_secret=SPOTIPY_CLIENT_SECRET,
+                                               redirect_uri=SPOTIPY_REDIRECT_URI,
+                                               scope=scope))
+        sp.start_playback()
+        speak("Playing your Spotify music.")
+    except Exception as e:
+        speak("Spotify error. Make sure an instance of Spotify is open and your credentials are set.")
+
 # ---------------------------
 # Command Dispatcher
 # ---------------------------
@@ -233,6 +321,14 @@ def MainExecution(query: str):
         webbrowser.open("https://www.google.com")
     elif "weather of kanpur" in query:
         speak(get_weather("Kanpur"))
+    elif "shutdown pc" in query:
+        shutdown_pc()
+    elif "plot a graph" in query:
+        plot_graph()
+    elif "open" in query and "folder" in query:
+        open_folder(query)
+    elif "close this folder" in query or "close this website" in query:
+        close_active_window()
     elif "play youtube" in query:
         speak("Tell me the name of the video or song you would like to play")
         video_url = speechrecognition()
