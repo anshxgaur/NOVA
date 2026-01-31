@@ -1,1 +1,87 @@
+#NOVA CODE
+
+import pyttsx3
+import speech_recognition as sr
+import pygame
+from datetime import datetime
+import webbrowser
+import requests
+import pywhatkit as pkit
+import os
+import psutil
+
+# Function to make Nova speak
+def speak(text):
+    engine = pyttsx3.init()
+    engine.setProperty('rate', 150)
+    engine.setProperty('voice', r'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_EN_US_DAVID_11.0')
+    engine.say(text)
+    engine.runAndWait()
+
+# Function to recognize speech
+def speechrecognition():
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening...")
+        r.pause_threshold = 1
+        audio = r.listen(source, timeout=8)
+        try:
+            print("Recognizing...")
+            query = r.recognize_google(audio).lower()
+            return query
+        except:
+            return ""
+
+# Other functionalities 
+def play_youtube_video(query):
+    pkit.playonyt(query)
+    speak(f"Playing {query} on YouTube")
+
+def close_youtube():
+    browser_name = "chrome"
+    for process in psutil.process_iter():
+        try:
+            if browser_name.lower() in process.name().lower():
+                process.kill()
+                speak("YouTube has been closed.")
+                return
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    speak("YouTube is not open or cannot be closed.")
+
+def MainExecution():
+    while True:
+        query = speechrecognition()
+        if query == "":
+            continue
+        elif "stop" in query or "exit" in query:
+            speak("Goodbye, Ansh! I am here whenever you need me.")
+            break
+        elif "hello" in query:
+            speak("Hello Ansh, I am Nova. How may I help you?")
+        elif "bye" in query:
+            speak("Have a nice day! Bye, nice to meet you.")
+        elif "time" in query:
+            current_time = datetime.now().strftime("%H:%M")
+            speak(f"The current time is {current_time}.")
+        elif "open youtube" in query:
+            speak("Opening YouTube")
+            webbrowser.open("https://www.youtube.com")
+        elif "close youtube" in query:
+            close_youtube()
+        elif "play youtube" in query:
+            speak("Tell me the name of the video or song you would like to play")
+            video_query = speechrecognition()
+            if video_query:
+                play_youtube_video(video_query)
+            else:
+                speak("I couldn't understand the name. Please try again.")
+        elif "open cube" in query:
+            open_cube_function()
+        else:
+            speak("I am sorry, I didn't understand that.")
+
+# Start the program
+speak("I am Nova. Say 'stop' or 'exit' whenever you want me to stop.")
+MainExecution()
 
