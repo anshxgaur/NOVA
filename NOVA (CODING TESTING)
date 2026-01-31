@@ -1,87 +1,264 @@
-#NOVA CODE
-
-import pyttsx3
-import speech_recognition as sr
-import pygame
-from datetime import datetime
+import os
+import subprocess
 import webbrowser
 import requests
+import pyttsx3
+import speech_recognition as sr
 import pywhatkit as pkit
-import os
 import psutil
+import pyautogui
+import pygetwindow as gw
+from datetime import datetime
+from ctypes import POINTER, cast
+from pynput.keyboard import Controller
+import platform
 
-# Function to make Nova speak
-def speak(text):
-    engine = pyttsx3.init()
-    engine.setProperty('rate', 150)
-    engine.setProperty('voice', r'HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_EN_US_DAVID_11.0')
-    engine.say(text)
-    engine.runAndWait()
+# Optional modules
+try:
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    HAS_PYCAW = True
+except ImportError:
+    HAS_PYCAW = False
 
-# Function to recognize speech
-def speechrecognition():
+try:
+    import screen_brightness_control as sbc
+    HAS_BRIGHTNESS = True
+except ImportError:
+    HAS_BRIGHTNESS = False
+
+# ---------------------------
+# Initialization
+# ---------------------------
+
+# Choose correct TTS driver for your OS
+system = platform.system()
+if system == "Windows":
+    engine = pyttsx3.init("sapi5")
+elif system == "Darwin":  # macOS
+    engine = pyttsx3.init("nsss")
+else:  # Linux and others
+    engine = pyttsx3.init("espeak")
+
+engine.setProperty('rate', 150)
+keyboard = Controller()
+
+volume_iface = None
+if HAS_PYCAW:
+    try:
+        devices = AudioUtilities.GetSpeakers()
+        iface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume_iface = cast(iface, POINTER(IAudioEndpointVolume))
+    except Exception:
+        volume_iface = None
+
+# ---------------------------
+# Core Functions
+# ---------------------------
+
+def speak(text: str):
+    """Speak and print text."""
+    print(f"[Nova] {text}")
+    try:
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as e:
+        print("[Speak error]", e)
+
+def speechrecognition() -> str:
+    """Capture voice input and return recognized text."""
     r = sr.Recognizer()
     with sr.Microphone() as source:
         print("Listening...")
         r.pause_threshold = 1
-        audio = r.listen(source, timeout=8)
         try:
-            print("Recognizing...")
+            audio = r.listen(source, timeout=8, phrase_time_limit=5)
             query = r.recognize_google(audio).lower()
+            print(f"[User] {query}")
             return query
-        except:
-            return ""
+        except sr.UnknownValueError:
+            speak("Sorry, I could not understand.")
+        except sr.RequestError:
+            speak("Speech service unavailable.")
+        except Exception as e:
+            print("[Speech error]", e)
+    return ""
 
-# Other functionalities 
-def play_youtube_video(query):
-    pkit.playonyt(query)
-    speak(f"Playing {query} on YouTube")
+def get_weather(city: str) -> str:
+    """Fetch weather info from OpenWeather API."""
+    api_key = "YOUR_API_KEY"  # Replace with your OpenWeatherMap API key
+    if api_key == "YOUR_API_KEY":
+        return "Weather API key not set."
+    try:
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+        response = requests.get(url, timeout=5)
+        data = response.json()
+        if str(data.get("cod")) != "404":
+            temp = data["main"]["temp"]
+            desc = data["weather"][0]["description"]
+            return f"The temperature in {city} is {temp}°C with {desc}."
+        else:
+            return "City not found."
+    except Exception as e:
+        print("[Weather error]", e)
+        return "Unable to fetch weather."
+
+def play_youtube_video(query: str):
+    """Play a YouTube video by query."""
+    if query:
+        try:
+            pkit.playonyt(query)
+            speak(f"Playing {query} on YouTube")
+        except Exception:
+            speak("Couldn't play that. Opening YouTube search.")
+            webbrowser.open(
+                "https://www.youtube.com/results?search_query=" + query.replace(" ", "+")
+            )
 
 def close_youtube():
-    browser_name = "chrome"
-    for process in psutil.process_iter():
+    """Close browser processes that may be playing YouTube."""
+    closed = False
+    for p in psutil.process_iter(attrs=['name']):
         try:
-            if browser_name.lower() in process.name().lower():
-                process.kill()
-                speak("YouTube has been closed.")
-                return
-        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            name = p.info['name']
+            if name and any(b in name.lower() for b in ["chrome", "msedge", "brave", "firefox"]):
+                p.kill()
+                closed = True
+        except Exception:
             pass
-    speak("YouTube is not open or cannot be closed.")
+    speak("YouTube has been closed." if closed else "YouTube is not open.")
 
-def MainExecution():
-    while True:
-        query = speechrecognition()
-        if query == "":
-            continue
-        elif "stop" in query or "exit" in query:
-            speak("Goodbye, Ansh! I am here whenever you need me.")
-            break
-        elif "hello" in query:
-            speak("Hello Ansh, I am Nova. How may I help you?")
-        elif "bye" in query:
-            speak("Have a nice day! Bye, nice to meet you.")
-        elif "time" in query:
-            current_time = datetime.now().strftime("%H:%M")
-            speak(f"The current time is {current_time}.")
-        elif "open youtube" in query:
-            speak("Opening YouTube")
-            webbrowser.open("https://www.youtube.com")
-        elif "close youtube" in query:
-            close_youtube()
-        elif "play youtube" in query:
-            speak("Tell me the name of the video or song you would like to play")
-            video_query = speechrecognition()
-            if video_query:
-                play_youtube_video(video_query)
-            else:
-                speak("I couldn't understand the name. Please try again.")
-        elif "open cube" in query:
-            open_cube_function()
+def increase_volume():
+    if volume_iface:
+        curr = volume_iface.GetMasterVolumeLevelScalar()
+        new = min(curr + 0.1, 1.0)
+        volume_iface.SetMasterVolumeLevelScalar(new, None)
+        speak(f"Volume increased to {int(new * 100)} percent.")
+    else:
+        speak("Volume control not available.")
+
+def decrease_volume():
+    if volume_iface:
+        curr = volume_iface.GetMasterVolumeLevelScalar()
+        new = max(curr - 0.1, 0.0)
+        volume_iface.SetMasterVolumeLevelScalar(new, None)
+        speak(f"Volume decreased to {int(new * 100)} percent.")
+    else:
+        speak("Volume control not available.")
+
+def increase_brightness():
+    if HAS_BRIGHTNESS:
+        try:
+            curr = sbc.get_brightness()[0]
+            new = min(curr + 10, 100)
+            sbc.set_brightness(new)
+            speak(f"Brightness increased to {new} percent.")
+        except Exception:
+            speak("Unable to change brightness.")
+    else:
+        speak("Brightness control not available.")
+
+def decrease_brightness():
+    if HAS_BRIGHTNESS:
+        try:
+            curr = sbc.get_brightness()[0]
+            new = max(curr - 10, 0)
+            sbc.set_brightness(new)
+            speak(f"Brightness decreased to {new} percent.")
+        except Exception:
+            speak("Unable to change brightness.")
+    else:
+        speak("Brightness control not available.")
+
+def move_mouse_to_coordinates():
+    speak("Say the X coordinate.")
+    try:
+        x_str = speechrecognition()
+        x = int(x_str)
+        speak("Say the Y coordinate.")
+        y_str = speechrecognition()
+        y = int(y_str)
+    except Exception:
+        speak("Invalid coordinates.")
+        return
+    width, height = pyautogui.size()
+    if 0 <= x < width and 0 <= y < height:
+        pyautogui.moveTo(x, y)
+        speak(f"Mouse moved to {x}, {y}.")
+    else:
+        speak("Coordinates out of bounds.")
+
+def minimize_all_windows():
+    try:
+        for w in gw.getAllWindows():
+            if hasattr(w, "minimize"):
+                w.minimize()
+        speak("All windows minimized.")
+    except Exception:
+        speak("Unable to minimize windows.")
+
+def maximize_window():
+    try:
+        w = gw.getActiveWindow()
+        if w:
+            w.maximize()
+            speak("Window maximized.")
         else:
-            speak("I am sorry, I didn't understand that.")
+            speak("No active window found.")
+    except Exception:
+        speak("Unable to maximize window.")
 
-# Start the program
-speak("I am Nova. Say 'stop' or 'exit' whenever you want me to stop.")
-MainExecution()
+# ---------------------------
+# Command Dispatcher
+# ---------------------------
 
+def MainExecution(query: str):
+    if "hello" in query:
+        speak("Hello Ansh, I am Nova. How may I assist you?")
+    elif "bye" in query:
+        speak("Have a nice day!")
+    elif "capital of india" in query:
+        speak("The capital of India is Delhi.")
+    elif "capital of uttar pradesh" in query:
+        speak("The capital of Uttar Pradesh is Lucknow.")
+    elif "time" in query:
+        speak(f"The current time is {datetime.now().strftime('%H:%M')}")
+    elif "open youtube" in query:
+        speak("Opening YouTube")
+        webbrowser.open("https://www.youtube.com")
+    elif "close youtube" in query:
+        close_youtube()
+    elif "open google" in query:
+        speak("Opening Google")
+        webbrowser.open("https://www.google.com")
+    elif "weather of kanpur" in query:
+        speak(get_weather("Kanpur"))
+    elif "play youtube" in query:
+        speak("Tell me the name of the video or song you would like to play")
+        video_url = speechrecognition()
+        play_youtube_video(video_url)
+    elif "increase volume" in query:
+        increase_volume()
+    elif "decrease volume" in query:
+        decrease_volume()
+    elif "increase brightness" in query:
+        increase_brightness()
+    elif "decrease brightness" in query:
+        decrease_brightness()
+    elif "move mouse" in query:
+        move_mouse_to_coordinates()
+    elif "minimize all windows" in query:
+        minimize_all_windows()
+    elif "maximize window" in query:
+        maximize_window()
+    else:
+        speak("I didn't understand that.")
+
+
+if __name__ == "__main__":
+    speak("Nova is now active.")
+    user_query = speechrecognition()
+    if user_query:
+        MainExecution(user_query)
+    else:
+        speak("No command detected.")
