@@ -1,0 +1,262 @@
+import os
+import subprocess
+import webbrowser
+import requests
+import pyttsx3
+import speech_recognition as sr
+import pywhatkit as pkit
+import psutil
+import pyautogui
+import pygetwindow as gw
+import platform
+import numpy as np
+import matplotlib.pyplot as plt
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
+from datetime import datetime
+from ctypes import POINTER, cast
+from pynput.keyboard import Controller
+
+# ---------------------------
+# Optional Module Handling
+# ---------------------------
+try:
+    from comtypes import CLSCTX_ALL
+    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+    HAS_PYCAW = True
+except ImportError:
+    HAS_PYCAW = False
+
+try:
+    import screen_brightness_control as sbc
+    HAS_BRIGHTNESS = True
+except ImportError:
+    HAS_BRIGHTNESS = False
+
+# ---------------------------
+# Initialization & Config
+# ---------------------------
+
+# Spotify Credentials (Get these from developer.spotify.com)
+SPOTIPY_CLIENT_ID = 'YOUR_CLIENT_ID'
+SPOTIPY_CLIENT_SECRET = 'YOUR_CLIENT_SECRET'
+SPOTIPY_REDIRECT_URI = 'http://localhost:8888/callback'
+
+system = platform.system()
+if system == "Windows":
+    engine = pyttsx3.init("sapi5")
+elif system == "Darwin":
+    engine = pyttsx3.init("nsss")
+else:
+    engine = pyttsx3.init("espeak")
+
+engine.setProperty('rate', 150)
+keyboard = Controller()
+
+volume_iface = None
+if HAS_PYCAW:
+    try:
+        devices = AudioUtilities.GetSpeakers()
+        iface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume_iface = cast(iface, POINTER(IAudioEndpointVolume))
+    except Exception:
+        volume_iface = None
+
+# ---------------------------
+# Core Functions
+# ---------------------------
+
+def speak(text: str):
+    """Speak and print text."""
+    print(f"[Nova] {text}")
+    try:
+        engine.say(text)
+        engine.runAndWait()
+    except Exception as e:
+        print("[Speak error]", e)
+
+def speechrecognition() -> str:
+    """Capture voice input."""
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        print("Listening...")
+        r.pause_threshold = 1
+        try:
+            audio = r.listen(source, timeout=8, phrase_time_limit=5)
+            query = r.recognize_google(audio).lower()
+            print(f"[User] {query}")
+            return query
+        except Exception:
+            return ""
+
+def get_weather(city: str) -> str:
+    api_key = "YOUR_OPENWEATHER_API_KEY"
+    if api_key == "YOUR_OPENWEATHER_API_KEY":
+        return "Weather API key not set."
+    try:
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+        data = requests.get(url).json()
+        if str(data.get("cod")) != "404":
+            temp = data["main"]["temp"]
+            desc = data["weather"][0]["description"]
+            return f"The temperature in {city} is {temp}°C with {desc}."
+        return "City not found."
+    except:
+        return "Unable to fetch weather."
+
+# ---------------------------
+# New Feature Functions
+# ---------------------------
+
+def shutdown_pc():
+    speak("Shutting down the PC in 10 seconds.")
+    if system == "Windows":
+        os.system("shutdown /s /t 10")
+    else:
+        os.system("shutdown -h now")
+
+def plot_graph():
+    speak("What should I plot? Say 'sine' or 'manual'.")
+    choice = speechrecognition()
+    if "sine" in choice:
+        x = np.linspace(0, 10, 100)
+        y = np.sin(x)
+        plt.plot(x, y)
+        plt.title("Sine Graph")
+        plt.show()
+        speak("Plotting sine graph.")
+    elif "manual" in choice:
+        speak("Please enter coordinates in the terminal.")
+        try:
+            x_vals = [float(i) for i in input("Enter X (commas): ").split(',')]
+            y_vals = [float(i) for i in input("Enter Y (commas): ").split(',')]
+            plt.plot(x_vals, y_vals, marker='o')
+            plt.show()
+            speak("Plotting your coordinates.")
+        except:
+            speak("Input error.")
+
+def open_folder(folder_name):
+    path = ""
+    if "download" in folder_name:
+        path = os.path.expanduser("~/Downloads")
+    elif "documents" in folder_name:
+        path = os.path.expanduser("~/Documents")
+    
+    if os.path.exists(path):
+        os.startfile(path) if system == "Windows" else subprocess.call(["open", path])
+        speak(f"Opening {folder_name}")
+    else:
+        speak("Folder not found.")
+
+def close_active_window():
+    try:
+        win = gw.getActiveWindow()
+        if win:
+            win.close()
+            speak("Closed.")
+    except:
+        speak("Could not close the window.")
+
+def play_spotify():
+    try:
+        scope = "user-modify-playback-state user-read-playback-state"
+        sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=SPOTIPY_CLIENT_ID,
+                                               client_secret=SPOTIPY_CLIENT_SECRET,
+                                               redirect_uri=SPOTIPY_REDIRECT_URI,
+                                               scope=scope))
+        sp.start_playback()
+        speak("Starting your Spotify music.")
+    except:
+        speak("Please ensure Spotify is open and credentials are set.")
+
+# ---------------------------
+# Original System Functions
+# ---------------------------
+
+def close_youtube():
+    closed = False
+    for p in psutil.process_iter(attrs=['name']):
+        if any(b in p.info['name'].lower() for b in ["chrome", "msedge", "firefox"]):
+            p.kill()
+            closed = True
+    speak("Closed browser" if closed else "Browser not found.")
+
+def increase_volume():
+    if volume_iface:
+        curr = volume_iface.GetMasterVolumeLevelScalar()
+        volume_iface.SetMasterVolumeLevelScalar(min(curr + 0.1, 1.0), None)
+        speak("Volume up.")
+
+def decrease_volume():
+    if volume_iface:
+        curr = volume_iface.GetMasterVolumeLevelScalar()
+        volume_iface.SetMasterVolumeLevelScalar(max(curr - 0.1, 0.0), None)
+        speak("Volume down.")
+
+# ---------------------------
+# Main Logic
+# ---------------------------
+
+def MainExecution(query: str):
+    # Basics
+    if "hello" in query:
+        speak("Hello Ansh, I am Nova. How may I assist you?")
+    elif "time" in query:
+        speak(f"The time is {datetime.now().strftime('%H:%M')}")
+    elif "capital of india" in query:
+        speak("The capital of India is Delhi.")
+
+    # NEW COMMANDS
+    elif "shutdown pc" in query:
+        shutdown_pc()
+    elif "plot a graph" in query:
+        plot_graph()
+    elif "open" in query and "folder" in query:
+        open_folder(query)
+    elif "close this folder" in query or "close this website" in query:
+        close_active_window()
+    elif "close all the windows" in query:
+        for w in gw.getAllWindows():
+            try: w.close()
+            except: pass
+    elif "play songs" in query:
+        play_spotify()
+
+    # ORIGINAL COMMANDS
+    elif "open youtube" in query:
+        webbrowser.open("https://www.youtube.com")
+    elif "close youtube" in query:
+        close_youtube()
+    elif "open google" in query:
+        webbrowser.open("https://www.google.com")
+    elif "weather" in query:
+        speak(get_weather("Kanpur"))
+    elif "play youtube" in query:
+        speak("What should I play?")
+        vid = speechrecognition()
+        pkit.playonyt(vid)
+    elif "increase volume" in query:
+        increase_volume()
+    elif "decrease volume" in query:
+        decrease_volume()
+    elif "increase brightness" in query and HAS_BRIGHTNESS:
+        sbc.set_brightness(min(sbc.get_brightness()[0] + 10, 100))
+    elif "decrease brightness" in query and HAS_BRIGHTNESS:
+        sbc.set_brightness(max(sbc.get_brightness()[0] - 10, 0))
+    elif "move mouse" in query:
+        speak("Say X and Y coordinates.")
+        # Logic from your original script
+        pyautogui.moveTo(500, 500) 
+    elif "bye" in query:
+        speak("Goodbye!")
+        exit()
+    else:
+        speak("I am not sure about that command.")
+
+if __name__ == "__main__":
+    speak("Nova is now active.")
+    while True:
+        user_query = speechrecognition()
+        if user_query:
+            MainExecution(user_query)
