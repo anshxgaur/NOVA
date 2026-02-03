@@ -2,7 +2,7 @@
   <img src="nova.png" alt="NOVA" width="900"/>
 </p>
 # NOVA
-# 🗣️ Nova - Your Personal Voice Assistantsss
+# 🗣️ Nova - Your Personal Voice Assistantss
 
 Nova is a Python-based voice assistant designed to automate everyday tasks using natural speech. From controlling system volume and brightness to searching the web, typing text, and playing YouTube videos — Nova listens,understands,and acts.
 
