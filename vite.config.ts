@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Copies WASM binaries from the backend npm packages into dist/assets/
+ * Copies WASM binaries from the @runanywhere npm packages into dist/assets/
  * so they're served alongside the bundled JS at runtime.
  *
  * In dev mode, Vite serves node_modules directly so this only
@@ -24,25 +24,26 @@ function copyWasmPlugin(): Plugin {
       const assetsDir = path.join(outDir, 'assets');
       fs.mkdirSync(assetsDir, { recursive: true });
 
-      // LlamaCpp WASM binaries
+      // LlamaCpp WASM binaries (LLM/VLM)
       const llamacppFiles = [
-        { src: path.join(llamacppWasm, 'racommons-llamacpp.wasm'), dest: 'racommons-llamacpp.wasm' },
-        { src: path.join(llamacppWasm, 'racommons-llamacpp-webgpu.wasm'), dest: 'racommons-llamacpp-webgpu.wasm' },
-        { src: path.join(llamacppWasm, 'racommons-llamacpp.js'), dest: 'racommons-llamacpp.js' },
-        { src: path.join(llamacppWasm, 'racommons-llamacpp-webgpu.js'), dest: 'racommons-llamacpp-webgpu.js' },
+        { src: 'racommons-llamacpp.wasm', dest: 'racommons-llamacpp.wasm' },
+        { src: 'racommons-llamacpp.js', dest: 'racommons-llamacpp.js' },
+        { src: 'racommons-llamacpp-webgpu.wasm', dest: 'racommons-llamacpp-webgpu.wasm' },
+        { src: 'racommons-llamacpp-webgpu.js', dest: 'racommons-llamacpp-webgpu.js' },
       ];
 
       for (const { src, dest } of llamacppFiles) {
-        if (fs.existsSync(src)) {
-          fs.copyFileSync(src, path.join(assetsDir, dest));
-          const sizeMB = (fs.statSync(src).size / 1_000_000).toFixed(1);
+        const srcPath = path.join(llamacppWasm, src);
+        if (fs.existsSync(srcPath)) {
+          fs.copyFileSync(srcPath, path.join(assetsDir, dest));
+          const sizeMB = (fs.statSync(srcPath).size / 1_000_000).toFixed(1);
           console.log(`  ✓ Copied ${dest} (${sizeMB} MB)`);
         } else {
-          console.warn(`  ⚠ Not found: ${src}`);
+          console.warn(`  ⚠ Not found: ${srcPath}`);
         }
       }
 
-      // Sherpa-ONNX: copy all files in sherpa/ subdirectory
+      // Sherpa-ONNX: copy all files in sherpa/ subdirectory (STT/TTS/VAD)
       const sherpaDir = path.join(onnxWasm, 'sherpa');
       const sherpaOut = path.join(assetsDir, 'sherpa');
       if (fs.existsSync(sherpaDir)) {
@@ -62,15 +63,18 @@ export default defineConfig({
   plugins: [react(), copyWasmPlugin()],
   server: {
     headers: {
+      // Cross-Origin Isolation — required for SharedArrayBuffer / multi-threaded WASM.
+      // Without these headers the SDK falls back to single-threaded mode.
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'credentialless',
     },
   },
-  optimizeDeps: {
-    // Exclude backend packages from pre-bundling so import.meta.url
-    // resolves correctly for WASM file discovery.
-    exclude: ['@runanywhere/web-llamacpp', '@runanywhere/web-onnx'],
-  },
   assetsInclude: ['**/*.wasm'],
   worker: { format: 'es' },
+  optimizeDeps: {
+    // Exclude WASM-bearing packages from pre-bundling so their
+    // import.meta.url resolves correctly to node_modules paths
+    // (needed for automatic WASM file discovery at ../../wasm/).
+    exclude: ['@runanywhere/web-llamacpp', '@runanywhere/web-onnx'],
+  },
 });

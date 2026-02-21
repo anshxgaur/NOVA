@@ -2,10 +2,10 @@
  * RunAnywhere SDK initialization and model catalog.
  *
  * This module:
- * 1. Initializes the SDK (core TypeScript infrastructure)
- * 2. Registers backends (LlamaCpp for LLM/VLM, ONNX for STT/TTS/VAD)
- * 3. Registers the model catalog
- * 4. Wires up the VLM Web Worker
+ * 1. Initializes the core SDK (TypeScript-only, no WASM)
+ * 2. Registers the LlamaCPP backend (loads LLM/VLM WASM)
+ * 3. Registers the ONNX backend (sherpa-onnx — STT/TTS/VAD)
+ * 4. Registers the model catalog and wires up VLM worker
  *
  * Import this module once at app startup.
  */
@@ -13,21 +13,14 @@
 import {
   RunAnywhere,
   SDKEnvironment,
-  EventBus,
   ModelManager,
   ModelCategory,
   LLMFramework,
   type CompactModelDef,
 } from '@runanywhere/web';
 
-import {
-  LlamaCPP,
-  VLMWorkerBridge,
-} from '@runanywhere/web-llamacpp';
-
+import { LlamaCPP, VLMWorkerBridge } from '@runanywhere/web-llamacpp';
 import { ONNX } from '@runanywhere/web-onnx';
-
-import type { AccelerationMode } from '@runanywhere/web';
 
 // Vite bundles the worker as a standalone JS chunk and returns its URL.
 // @ts-ignore — Vite-specific ?worker&url query
@@ -95,25 +88,19 @@ const MODELS: CompactModelDef[] = [
 // ---------------------------------------------------------------------------
 
 let _initPromise: Promise<void> | null = null;
-let _accelerationMode: AccelerationMode | null = null;
 
 /** Initialize the RunAnywhere SDK. Safe to call multiple times. */
 export async function initSDK(): Promise<void> {
   if (_initPromise) return _initPromise;
 
   _initPromise = (async () => {
-    // Step 1: Initialize core SDK (pure TypeScript — no WASM)
+    // Step 1: Initialize core SDK (TypeScript-only, no WASM)
     await RunAnywhere.initialize({
       environment: SDKEnvironment.Development,
       debug: true,
     });
 
-    // Listen for acceleration mode from LlamaCpp backend
-    EventBus.shared.on('llamacpp.wasmLoaded', (evt) => {
-      _accelerationMode = (evt.accelerationMode as AccelerationMode) ?? 'cpu';
-    });
-
-    // Step 2: Register backends (each loads its own WASM automatically)
+    // Step 2: Register backends (loads WASM automatically)
     await LlamaCPP.register();
     await ONNX.register();
 
@@ -134,9 +121,9 @@ export async function initSDK(): Promise<void> {
 }
 
 /** Get acceleration mode after init. */
-export function getAccelerationMode(): AccelerationMode | null {
-  return _accelerationMode;
+export function getAccelerationMode(): string | null {
+  return LlamaCPP.isRegistered ? LlamaCPP.accelerationMode : null;
 }
 
 // Re-export for convenience
-export { RunAnywhere, ModelManager, ModelCategory, VLMWorkerBridge, LlamaCPP };
+export { RunAnywhere, ModelManager, ModelCategory, VLMWorkerBridge };

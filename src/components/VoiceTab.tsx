@@ -1,15 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import {
-  VoicePipeline,
-  ModelCategory,
-  ModelManager,
-} from '@runanywhere/web';
-import {
-  AudioCapture,
-  AudioPlayback,
-  VAD,
-  SpeechActivity,
-} from '@runanywhere/web-onnx';
+import { VoicePipeline, ModelCategory, ModelManager } from '@runanywhere/web';
+import { AudioCapture, AudioPlayback, VAD, SpeechActivity } from '@runanywhere/web-onnx';
 import { useModelLoader } from '../hooks/useModelLoader';
 import { ModelBanner } from './ModelBanner';
 
