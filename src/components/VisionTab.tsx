@@ -39,19 +39,37 @@ export function VisionTab() {
   const startCamera = useCallback(async () => {
     if (captureRef.current?.isCapturing) return;
 
-    const cam = new VideoCapture({ facingMode: 'environment' });
-    await cam.start();
-    captureRef.current = cam;
+    setError(null);
 
-    const mount = videoMountRef.current;
-    if (mount) {
-      const el = cam.videoElement;
-      el.style.width = '100%';
-      el.style.borderRadius = '12px';
-      mount.appendChild(el);
+    try {
+      const cam = new VideoCapture({ facingMode: 'environment' });
+      await cam.start();
+      captureRef.current = cam;
+
+      const mount = videoMountRef.current;
+      if (mount) {
+        const el = cam.videoElement;
+        el.style.width = '100%';
+        el.style.borderRadius = '12px';
+        mount.appendChild(el);
+      }
+
+      setCameraActive(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+
+      if (msg.includes('NotAllowed') || msg.includes('Permission')) {
+        setError(
+          'Camera permission denied. On macOS, check System Settings → Privacy & Security → Camera and ensure your browser is allowed.',
+        );
+      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        setError('No camera found on this device.');
+      } else if (msg.includes('NotReadable') || msg.includes('TrackStartError')) {
+        setError('Camera is in use by another application.');
+      } else {
+        setError(`Camera error: ${msg}`);
+      }
     }
-
-    setCameraActive(true);
   }, []);
 
   // Cleanup on unmount

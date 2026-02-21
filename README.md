@@ -6,7 +6,7 @@ A minimal React + TypeScript starter app demonstrating **on-device AI in the bro
 
 | Tab | What it does |
 |-----|-------------|
-| **Chat** | Stream text from an on-device LLM (SmolLM2 360M) |
+| **Chat** | Stream text from an on-device LLM (LFM2 350M) |
 | **Vision** | Point your camera and describe what the VLM sees (LFM2-VL 450M) |
 | **Voice** | Speak naturally — VAD detects speech, STT transcribes, LLM responds, TTS speaks back |
 
@@ -31,9 +31,10 @@ Open [http://localhost:5173](http://localhost:5173). Models are downloaded on fi
 The app imports everything from `@runanywhere/web`:
 
 ```typescript
-import { RunAnywhere, TextGeneration, VLMWorkerBridge } from '@runanywhere/web';
+import { RunAnywhere, SDKEnvironment } from '@runanywhere/web';
+import { TextGeneration, VLMWorkerBridge } from '@runanywhere/web-llamacpp';
 
-await RunAnywhere.initialize({ environment: 'development' });
+await RunAnywhere.initialize({ environment: SDKEnvironment.Development });
 
 // Stream LLM text
 const { stream } = await TextGeneration.generateStream('Hello!', { maxTokens: 200 });
