@@ -6,3 +6,5 @@ dist/
 .playwright-mcp/
 *.png
 .env
+venv/
+src/venv/
