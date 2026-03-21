@@ -223,6 +223,8 @@ streamlit run app.py
 git clone https://github.com/anshxgaur/NOVA.git
 cd NOVA
 python -m venv venv
+cd src 
+source venv/Scripts/activate
 venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
