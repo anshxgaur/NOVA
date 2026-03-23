@@ -1,5 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import wasm from 'vite-plugin-wasm';
+import topLevelAwait from 'vite-plugin-top-level-await';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -44,7 +46,7 @@ function copyWasmPlugin(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), copyWasmPlugin()],
+  plugins: [react(), wasm(), topLevelAwait(), copyWasmPlugin()],
   server: {
     headers: {
       'Cross-Origin-Opener-Policy': 'same-origin',

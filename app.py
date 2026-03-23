@@ -11,22 +11,28 @@ import platform
 import threading
 import time
 import re
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from pynput.keyboard import Controller, Key
 
-# Optional volume control
-try:
-    from ctypes import POINTER, cast
-    from comtypes import CLSCTX_ALL
-    from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-    devices = AudioUtilities.GetSpeakers()
-    iface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-    volume_iface = cast(iface, POINTER(IAudioEndpointVolume))
-    HAS_PYCAW = True
-except:
-    HAS_PYCAW = False
-    volume_iface = None
+system_platform = platform.system()
+
+# Optional volume control (Windows via pycaw)
+HAS_PYCAW = False
+volume_iface = None
+if system_platform == "Windows":
+    try:
+        from ctypes import POINTER, cast
+        from comtypes import CLSCTX_ALL
+        from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+        devices = AudioUtilities.GetSpeakers()
+        iface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume_iface = cast(iface, POINTER(IAudioEndpointVolume))
+        HAS_PYCAW = True
+    except Exception:
+        HAS_PYCAW = False
+        volume_iface = None
 
 load_dotenv()
 
@@ -34,13 +40,18 @@ app = Flask(__name__)
 CORS(app)
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-system_platform = platform.system()
 keyboard = Controller()
 
 # Typing mode state
 typing_mode = False
 
 SYSTEM_PROMPT = "You are NOVA, an advanced AI assistant with a sleek futuristic personality. Be helpful, concise, and slightly futuristic in tone."
+EMOTION_PROMPT = (
+    "Classify the emotional tone of the text and respond with JSON only. "
+    "Use one label from: neutral, calm, happy, excited, empathetic, serious, playful. "
+    "Return exactly: {\"label\":\"...\",\"rate\":1.0,\"pitch\":1.0,\"volume\":1.0}. "
+    "rate/pitch/volume should be floats between 0.85 and 1.15. No extra text."
+)
 
 # ─────────────────────────────────────────
 # KEY MAPPING
@@ -82,10 +93,12 @@ KEY_MAP = {
     "page up": Key.page_up,
     "page down": Key.page_down,
     "caps lock": Key.caps_lock,
-    "print screen": Key.print_screen,
     "insert": Key.insert,
     "num lock": Key.num_lock,
 }
+
+if hasattr(Key, "print_screen"):
+    KEY_MAP["print screen"] = Key.print_screen
 
 # ─────────────────────────────────────────
 # MEMORY SYSTEM
@@ -195,6 +208,49 @@ def handle_chat():
 
     return Response(stream_with_context(generate()), mimetype='text/plain')
 
+def detect_emotion(text):
+    if not text.strip():
+        return {"label": "neutral", "rate": 1.0, "pitch": 1.0, "volume": 1.0}
+    result = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        max_tokens=80,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": EMOTION_PROMPT},
+            {"role": "user", "content": text}
+        ],
+    )
+    content = result.choices[0].message.content or ""
+    try:
+        data = json.loads(content)
+        label = str(data.get("label", "neutral")).strip().lower()
+        rate = float(data.get("rate", 1.0))
+        pitch = float(data.get("pitch", 1.0))
+        volume = float(data.get("volume", 1.0))
+        if label not in {"neutral", "calm", "happy", "excited", "empathetic", "serious", "playful"}:
+            label = "neutral"
+        rate = min(1.15, max(0.85, rate))
+        pitch = min(1.15, max(0.85, pitch))
+        volume = min(1.15, max(0.85, volume))
+        return {"label": label, "rate": rate, "pitch": pitch, "volume": volume}
+    except Exception:
+        return {"label": "neutral", "rate": 1.0, "pitch": 1.0, "volume": 1.0}
+
+@app.route('/api/emotion', methods=['POST'])
+def emotion():
+    data = request.json or {}
+    text = data.get("text", "")
+    try:
+        return jsonify(detect_emotion(text))
+    except Exception as e:
+        return jsonify({
+            "label": "neutral",
+            "rate": 1.0,
+            "pitch": 1.0,
+            "volume": 1.0,
+            "error": str(e)
+        })
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "NOVA backend online ⚡"})
@@ -203,7 +259,76 @@ def health():
 # VOLUME CONTROL
 # ─────────────────────────────────────────
 
+def _osascript(script):
+    result = subprocess.run(
+        ["osascript", "-e", script],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+    return result.stdout.strip()
+
+def _mac_get_volume():
+    out = _osascript("output volume of (get volume settings)")
+    try:
+        return int(out)
+    except ValueError:
+        return 0
+
+def _mac_set_volume(percent):
+    percent = max(0, min(100, int(percent)))
+    _osascript(f"set volume output volume {percent}")
+
+def _mac_unmute():
+    _osascript("set volume output muted false")
+
+def _mac_mute():
+    _osascript("set volume output muted true")
+
 def control_volume_action(action, percent=None):
+    if system_platform == "Darwin":
+        try:
+            if action == "increase":
+                curr = _mac_get_volume()
+                change = percent or 15
+                new_vol = min(curr + change, 100)
+                _mac_unmute()
+                _mac_set_volume(new_vol)
+                return jsonify({
+                    "status": f"Volume increased to {new_vol}%",
+                    "speak": f"Volume increased to {new_vol} percent."
+                })
+            elif action == "decrease":
+                curr = _mac_get_volume()
+                change = percent or 15
+                new_vol = max(curr - change, 0)
+                _mac_unmute()
+                _mac_set_volume(new_vol)
+                return jsonify({
+                    "status": f"Volume decreased to {new_vol}%",
+                    "speak": f"Volume decreased to {new_vol} percent."
+                })
+            elif action == "mute":
+                _mac_mute()
+                return jsonify({"status": "Muted", "speak": "Audio muted."})
+            elif action == "set" and percent is not None:
+                _mac_unmute()
+                _mac_set_volume(percent)
+                return jsonify({
+                    "status": f"Volume set to {int(percent)}%",
+                    "speak": f"Volume set to {int(percent)} percent."
+                })
+            elif action == "get":
+                curr = _mac_get_volume()
+                return jsonify({
+                    "status": f"Volume is at {curr}%",
+                    "speak": f"Current volume is {curr} percent.",
+                    "level": curr
+                })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
     if not HAS_PYCAW or not volume_iface:
         if action == "increase":
             presses = int((percent or 15) / 2)

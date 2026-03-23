@@ -51,9 +51,6 @@ export async function initSDK(): Promise<void> {
     try {
       await LlamaCPP.register({
         acceleration: 'webgpu',
-
-        // 🔥 Use all CPU cores efficiently
-        threads: navigator.hardwareConcurrency || 4,
       });
 
       console.log("NOVA: WebGPU Engaged 🚀");
@@ -62,7 +59,6 @@ export async function initSDK(): Promise<void> {
 
       await LlamaCPP.register({
         acceleration: 'cpu',
-        threads: navigator.hardwareConcurrency || 4,
       });
     }
 

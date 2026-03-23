@@ -1,0 +1,911 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+
+/* ═══════════════════════════════════════════════════════
+   AURORA PURPLE THEME — MODEL-X / NOVA
+═══════════════════════════════════════════════════════ */
+
+:root {
+    --a1: #c084fc;
+    --a2: #a855f7;
+    --a3: #7c3aed;
+    --a4: #e879f9;
+    --a5: #f0abfc;
+    --aglow: #d946ef;
+    --agold: #fbbf24;
+    --ateal: #2dd4bf;
+}
+
+.nova-container {
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background:
+        radial-gradient(ellipse at 20% 10%, rgba(124, 58, 237, 0.18) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 90%, rgba(232, 121, 249, 0.14) 0%, transparent 55%),
+        radial-gradient(ellipse at 50% 50%, rgba(15, 5, 30, 1) 0%, rgba(5, 2, 15, 1) 100%);
+    overflow: hidden;
+    color: var(--a5);
+    font-family: 'Orbitron', sans-serif;
+    z-index: 50;
+}
+
+.nova-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        linear-gradient(135deg,
+            transparent 0%,
+            rgba(168, 85, 247, 0.04) 30%,
+            rgba(232, 121, 249, 0.06) 50%,
+            rgba(168, 85, 247, 0.04) 70%,
+            transparent 100%);
+    animation: auroraBg 12s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes auroraBg {
+    0% {
+        opacity: 0.5;
+        transform: translateX(-5%) scaleY(1);
+    }
+
+    50% {
+        opacity: 1;
+        transform: translateX(5%) scaleY(1.05);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: translateX(-3%) scaleY(1);
+    }
+}
+
+/* ── TOP BAR ── */
+.top-left,
+.top-right,
+.top-center {
+    position: absolute;
+    top: 15px;
+    font-size: 1.2rem;
+    z-index: 10;
+    color: var(--a5);
+}
+
+.top-left {
+    left: 30px;
+}
+
+.top-right {
+    right: 30px;
+}
+
+.top-center {
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.1rem;
+    text-shadow: 0 0 12px rgba(192, 132, 252, 0.6);
+}
+
+.date-display {
+    position: absolute;
+    top: 45px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.8rem;
+    color: var(--a4);
+    text-shadow: 0 0 6px rgba(232, 121, 249, 0.5);
+    z-index: 10;
+}
+
+/* ── OUTER ORBIT RINGS ── */
+.orb-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 420px;
+    height: 420px;
+    border: 1.5px dashed rgba(192, 132, 252, 0.2);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: spinRing 28s linear infinite;
+    z-index: 1;
+}
+
+.orb-ring::after {
+    content: '';
+    position: absolute;
+    inset: 30px;
+    border: 1px dashed rgba(232, 121, 249, 0.12);
+    border-radius: 50%;
+    animation: spinRing 18s linear infinite reverse;
+}
+
+@keyframes spinRing {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* ── AURA RINGS (idle) ── */
+.aurora-aura {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.aurora-aura-1 {
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
+    animation: auraIdle1 5s ease-in-out infinite;
+}
+
+.aurora-aura-2 {
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(217, 70, 239, 0.1) 0%, transparent 70%);
+    animation: auraIdle2 5s ease-in-out infinite 0.8s;
+}
+
+.aurora-aura-3 {
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.0) 0%, transparent 70%);
+    animation: auraIdle3 5s ease-in-out infinite 1.6s;
+}
+
+@keyframes auraIdle1 {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.6;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.08);
+        opacity: 1;
+    }
+}
+
+@keyframes auraIdle2 {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 0.4;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(0.95);
+        opacity: 0.9;
+    }
+}
+
+@keyframes auraIdle3 {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.12);
+        opacity: 0;
+    }
+}
+
+/* ── LISTENING — auroric gold heartbeat ── */
+.nova-container.listening .aurora-aura-1 {
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.35) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 75%);
+    animation: auraListenBeat1 0.7s ease-in-out infinite;
+}
+
+.nova-container.listening .aurora-aura-2 {
+    background: radial-gradient(circle, rgba(232, 121, 249, 0.3) 0%, rgba(251, 191, 36, 0.15) 50%, transparent 75%);
+    animation: auraListenBeat2 0.7s ease-in-out infinite 0.18s;
+}
+
+.nova-container.listening .aurora-aura-3 {
+    background: radial-gradient(circle, rgba(251, 191, 36, 0.18) 0%, rgba(217, 70, 239, 0.12) 40%, transparent 70%);
+    animation: auraListenBeat3 0.7s ease-in-out infinite 0.35s;
+}
+
+@keyframes auraListenBeat1 {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.7;
+    }
+
+    35% {
+        transform: translate(-50%, -50%) scale(1.18);
+        opacity: 1;
+    }
+
+    70% {
+        transform: translate(-50%, -50%) scale(0.97);
+        opacity: 0.85;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.7;
+    }
+}
+
+@keyframes auraListenBeat2 {
+    0% {
+        transform: translate(-50%, -50%) scale(1.04);
+        opacity: 0.5;
+    }
+
+    35% {
+        transform: translate(-50%, -50%) scale(0.93);
+        opacity: 1;
+    }
+
+    70% {
+        transform: translate(-50%, -50%) scale(1.12);
+        opacity: 0.7;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1.04);
+        opacity: 0.5;
+    }
+}
+
+@keyframes auraListenBeat3 {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+
+    35% {
+        transform: translate(-50%, -50%) scale(1.22);
+        opacity: 0.6;
+    }
+
+    70% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 0.3;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+}
+
+/* ── THE ORB SPHERE (idle) ── */
+.glow-circle {
+    position: absolute;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    z-index: 4;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transition: box-shadow 0.4s ease, background 0.4s ease;
+    background:
+        radial-gradient(circle at 38% 35%,
+            rgba(240, 171, 252, 0.95) 0%,
+            rgba(192, 132, 252, 0.85) 18%,
+            rgba(124, 58, 237, 0.9) 40%,
+            rgba(60, 15, 100, 0.95) 70%,
+            rgba(10, 2, 20, 1) 100%);
+    box-shadow:
+        0 0 40px rgba(168, 85, 247, 0.7),
+        0 0 80px rgba(168, 85, 247, 0.35),
+        0 0 120px rgba(168, 85, 247, 0.15),
+        inset 0 0 30px rgba(240, 171, 252, 0.1);
+    animation: orbBreathe 5s ease-in-out infinite;
+}
+
+/* specular highlight */
+.glow-circle::before {
+    content: '';
+    position: absolute;
+    top: 14%;
+    left: 16%;
+    width: 35%;
+    height: 25%;
+    background: radial-gradient(ellipse, rgba(255, 255, 255, 0.45) 0%, transparent 80%);
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(3px);
+}
+
+/* inner swirl */
+.glow-circle::after {
+    content: '';
+    position: absolute;
+    inset: 15%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg,
+            rgba(232, 121, 249, 0.3),
+            rgba(168, 85, 247, 0.1),
+            rgba(45, 212, 191, 0.15),
+            rgba(251, 191, 36, 0.05),
+            rgba(232, 121, 249, 0.3));
+    animation: orbSwirl 8s linear infinite;
+    opacity: 0.5;
+    mix-blend-mode: screen;
+}
+
+@keyframes orbSwirl {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes orbBreathe {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.88;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.06);
+        opacity: 1;
+    }
+}
+
+/* ── LISTENING — gold beat ── */
+.nova-container.listening .glow-circle {
+    background:
+        radial-gradient(circle at 38% 35%,
+            rgba(253, 240, 190, 0.98) 0%,
+            rgba(251, 191, 36, 0.92) 15%,
+            rgba(217, 70, 239, 0.88) 40%,
+            rgba(100, 20, 140, 0.95) 70%,
+            rgba(10, 2, 20, 1) 100%);
+    box-shadow:
+        0 0 50px rgba(251, 191, 36, 0.9),
+        0 0 90px rgba(251, 191, 36, 0.5),
+        0 0 140px rgba(217, 70, 239, 0.35),
+        0 0 200px rgba(168, 85, 247, 0.2),
+        inset 0 0 30px rgba(251, 191, 36, 0.2);
+    animation: orbListenBeat 0.65s ease-in-out infinite;
+}
+
+@keyframes orbListenBeat {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.9;
+    }
+
+    30% {
+        transform: translate(-50%, -50%) scale(1.13);
+        opacity: 1;
+    }
+
+    60% {
+        transform: translate(-50%, -50%) scale(1.05);
+        opacity: 0.95;
+    }
+
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.9;
+    }
+}
+
+/* ── SPEAKING — teal pulse ── */
+.nova-container.speaking .glow-circle {
+    background:
+        radial-gradient(circle at 38% 35%,
+            rgba(200, 255, 240, 0.98) 0%,
+            rgba(45, 212, 191, 0.9) 18%,
+            rgba(124, 58, 237, 0.88) 45%,
+            rgba(30, 10, 70, 0.95) 75%,
+            rgba(5, 2, 15, 1) 100%);
+    box-shadow:
+        0 0 45px rgba(45, 212, 191, 0.8),
+        0 0 85px rgba(45, 212, 191, 0.4),
+        0 0 130px rgba(124, 58, 237, 0.25),
+        inset 0 0 25px rgba(45, 212, 191, 0.15);
+    animation: orbSpeakPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes orbSpeakPulse {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.9;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.09);
+        opacity: 1;
+    }
+}
+
+/* ── PROCESSING — rapid flicker ── */
+.nova-container.processing .glow-circle {
+    box-shadow:
+        0 0 40px rgba(168, 85, 247, 0.6),
+        0 0 70px rgba(168, 85, 247, 0.3),
+        inset 0 0 30px rgba(192, 132, 252, 0.1);
+    animation: orbProcess 0.4s ease-in-out infinite;
+}
+
+@keyframes orbProcess {
+
+    0%,
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.7;
+    }
+
+    50% {
+        transform: translate(-50%, -50%) scale(1.04);
+        opacity: 1;
+    }
+}
+
+/* ── AUDIO BARS ── */
+.audio-bars {
+    position: absolute;
+    bottom: 100px;
+    display: flex;
+    gap: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.bar {
+    width: 5px;
+    height: 20px;
+    background: var(--a2);
+    border-radius: 3px;
+    animation: barPulse 1s infinite alternate;
+}
+
+.bar:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.bar:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.bar:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+.bar:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+.bar:nth-child(5) {
+    animation-delay: 0.4s;
+}
+
+@keyframes barPulse {
+    0% {
+        height: 8px;
+        opacity: 0.3;
+    }
+
+    100% {
+        height: 36px;
+        opacity: 1;
+    }
+}
+
+.nova-container.listening .bar {
+    background: var(--agold);
+    box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.nova-container.speaking .bar {
+    background: var(--ateal);
+    box-shadow: 0 0 8px rgba(45, 212, 191, 0.6);
+}
+
+/* ── COMMAND CENTER ── */
+.command-center {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    width: 480px;
+}
+
+.input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    width: 100%;
+}
+
+.command-input {
+    flex: 1;
+    min-height: 48px;
+    max-height: 160px;
+    padding: 12px 18px;
+    border: 1px solid rgba(168, 85, 247, 0.5);
+    background: rgba(10, 3, 25, 0.75);
+    color: var(--a5);
+    font-family: 'Orbitron', sans-serif;
+    outline: none;
+    box-shadow: 0 0 18px rgba(168, 85, 247, 0.3), inset 0 0 10px rgba(124, 58, 237, 0.08);
+    font-size: 0.88rem;
+    border-radius: 6px;
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.5;
+    box-sizing: border-box;
+    field-sizing: content;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    backdrop-filter: blur(8px);
+}
+
+.command-input:focus {
+    border-color: rgba(192, 132, 252, 0.8);
+    box-shadow: 0 0 28px rgba(168, 85, 247, 0.5), inset 0 0 12px rgba(124, 58, 237, 0.12);
+}
+
+.command-input::placeholder {
+    color: rgba(192, 132, 252, 0.35);
+}
+
+.command-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.nova-container.listening .command-input {
+    border-color: rgba(251, 191, 36, 0.6);
+    box-shadow: 0 0 22px rgba(251, 191, 36, 0.3), inset 0 0 10px rgba(251, 191, 36, 0.05);
+}
+
+/* ── MIC BUTTON ── */
+.mic-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid rgba(168, 85, 247, 0.6);
+    background: rgba(10, 3, 25, 0.75);
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 14px rgba(168, 85, 247, 0.3);
+    user-select: none;
+    backdrop-filter: blur(8px);
+}
+
+.mic-btn:hover {
+    background: rgba(168, 85, 247, 0.15);
+    box-shadow: 0 0 24px rgba(168, 85, 247, 0.55);
+    transform: scale(1.06);
+}
+
+.mic-btn.mic-active {
+    border-color: var(--agold);
+    background: rgba(251, 191, 36, 0.12);
+    box-shadow:
+        0 0 20px rgba(251, 191, 36, 0.7),
+        0 0 40px rgba(251, 191, 36, 0.35),
+        0 0 60px rgba(217, 70, 239, 0.2);
+    animation: micGoldPulse 0.65s infinite alternate;
+}
+
+@keyframes micGoldPulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 20px rgba(251, 191, 36, 0.7), 0 0 40px rgba(251, 191, 36, 0.3);
+    }
+
+    100% {
+        transform: scale(1.14);
+        box-shadow: 0 0 30px rgba(251, 191, 36, 0.9), 0 0 60px rgba(251, 191, 36, 0.5), 0 0 80px rgba(217, 70, 239, 0.3);
+    }
+}
+
+/* ── LEFT PANEL — MEMORY CORE ── */
+.nova-panel,
+.left-panel {
+    position: absolute;
+    left: 24px;
+    top: 75px;
+    width: 300px;
+    height: calc(100vh - 155px);
+    background: rgba(8, 3, 20, 0.65);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 10px;
+    box-shadow: 0 0 24px rgba(124, 58, 237, 0.12), inset 0 0 18px rgba(168, 85, 247, 0.05);
+    padding: 16px;
+    overflow-y: auto;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.left-panel::-webkit-scrollbar {
+    width: 3px;
+}
+
+.left-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.left-panel::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.3);
+    border-radius: 2px;
+}
+
+.memory-title {
+    color: var(--a4);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+    padding-bottom: 8px;
+    margin: 0;
+    flex-shrink: 0;
+    text-shadow: 0 0 8px rgba(232, 121, 249, 0.4);
+}
+
+.memory-count {
+    font-size: 0.65rem;
+    color: rgba(192, 132, 252, 0.4);
+    border-left: 2px solid rgba(168, 85, 247, 0.2);
+    padding-left: 8px;
+    flex-shrink: 0;
+}
+
+.memory-input {
+    flex: 1;
+    padding: 8px 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 5px;
+    color: var(--a5);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.67rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.memory-input:focus {
+    border-color: rgba(192, 132, 252, 0.5);
+    box-shadow: 0 0 10px rgba(168, 85, 247, 0.15);
+}
+
+.memory-input::placeholder {
+    color: rgba(192, 132, 252, 0.2);
+}
+
+.memory-add-btn {
+    padding: 8px 12px;
+    background: rgba(168, 85, 247, 0.08);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    border-radius: 5px;
+    color: var(--a1);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background 0.2s, box-shadow 0.2s;
+}
+
+.memory-add-btn:hover {
+    background: rgba(168, 85, 247, 0.18);
+    box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.memory-clear-btn {
+    background: transparent;
+    border: 1px solid rgba(217, 70, 239, 0.25);
+    border-radius: 4px;
+    color: rgba(217, 70, 239, 0.5);
+    font-size: 0.6rem;
+    padding: 2px 7px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    font-family: 'Orbitron', sans-serif;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.memory-clear-btn:hover {
+    border-color: rgba(217, 70, 239, 0.6);
+    color: rgba(217, 70, 239, 0.85);
+}
+
+.memory-tip {
+    font-size: 0.6rem;
+    color: rgba(168, 85, 247, 0.35);
+    border-left: 2px solid rgba(168, 85, 247, 0.15);
+    padding-left: 8px;
+    line-height: 1.5;
+    flex-shrink: 0;
+}
+
+.memory-empty {
+    color: rgba(192, 132, 252, 0.2);
+    font-size: 0.7rem;
+    text-align: center;
+    margin-top: 20px;
+    line-height: 1.8;
+}
+
+.memory-card {
+    background: rgba(168, 85, 247, 0.04);
+    border: 1px solid rgba(168, 85, 247, 0.1);
+    border-radius: 7px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.memory-card:hover {
+    border-color: rgba(168, 85, 247, 0.25);
+    background: rgba(168, 85, 247, 0.08);
+}
+
+.memory-card-text {
+    color: var(--a5);
+    font-size: 0.73rem;
+    line-height: 1.55;
+}
+
+.memory-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.memory-card-time {
+    color: rgba(232, 121, 249, 0.3);
+    font-size: 0.6rem;
+}
+
+.memory-delete-btn {
+    background: transparent;
+    border: none;
+    color: rgba(217, 70, 239, 0.35);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    transition: color 0.2s;
+}
+
+.memory-delete-btn:hover {
+    color: rgba(217, 70, 239, 0.8);
+}
+
+/* ── RIGHT PANEL — SYSTEM LOG ── */
+.right-panel {
+    position: absolute;
+    right: 24px;
+    top: 75px;
+    width: 380px;
+    height: calc(100vh - 155px);
+    background: rgba(8, 3, 20, 0.65);
+    border: 1px solid rgba(168, 85, 247, 0.25);
+    border-radius: 10px;
+    box-shadow: 0 0 24px rgba(124, 58, 237, 0.12), inset 0 0 18px rgba(168, 85, 247, 0.05);
+    padding: 16px;
+    overflow-y: auto;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: border-color 0.35s, box-shadow 0.35s;
+}
+
+.right-panel h3 {
+    margin: 0 0 10px 0;
+    color: var(--a4);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    border-bottom: 1px solid rgba(168, 85, 247, 0.2);
+    padding-bottom: 8px;
+    flex-shrink: 0;
+    text-shadow: 0 0 8px rgba(232, 121, 249, 0.4);
+}
+
+.right-panel::-webkit-scrollbar {
+    width: 3px;
+}
+
+.right-panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.right-panel::-webkit-scrollbar-thumb {
+    background: rgba(168, 85, 247, 0.3);
+    border-radius: 2px;
+}
+
+.right-panel.listening {
+    border-color: rgba(251, 191, 36, 0.5);
+    box-shadow: 0 0 24px rgba(251, 191, 36, 0.18), inset 0 0 18px rgba(251, 191, 36, 0.05);
+}
+
+.right-panel.speaking {
+    border-color: rgba(45, 212, 191, 0.45);
+    box-shadow: 0 0 24px rgba(45, 212, 191, 0.15), inset 0 0 18px rgba(45, 212, 191, 0.05);
+}
+
+/* ── MESSAGES ── */
+.ai-message {
+    color: var(--a5);
+    font-size: 0.82rem;
+    line-height: 1.65;
+    text-shadow: 0 0 3px rgba(192, 132, 252, 0.15);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.user-message {
+    color: rgba(168, 85, 247, 0.55);
+    font-size: 0.77rem;
+    text-align: right;
+    margin-bottom: -5px;
+}
+
+.system-message {
+    color: var(--a4);
+    font-size: 0.77rem;
+    border-left: 2px solid rgba(232, 121, 249, 0.5);
+    padding-left: 10px;
+    opacity: 0.9;
+}
+
+/* ── TOP BAR BADGE + STATE COLORS ── */
+.top-left .aurora-badge {
+    color: rgba(232, 121, 249, 0.7);
+    margin-left: 12px;
+    font-size: 0.65rem;
+    border: 1px solid rgba(232, 121, 249, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-shadow: 0 0 6px rgba(232, 121, 249, 0.4);
+}
+
+.top-right {
+    transition: color 0.3s, text-shadow 0.3s;
+}
+
+.nova-container.listening .top-right {
+    color: var(--agold);
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.6);
+}
+
+.nova-container.speaking .top-right {
+    color: var(--ateal);
+    text-shadow: 0 0 10px rgba(45, 212, 191, 0.6);
+}
