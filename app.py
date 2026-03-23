@@ -33,7 +33,12 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+try:
+    client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+except Exception as e:
+    print(f"Error initializing Groq client: {e}")
+    client = None
+
 system_platform = platform.system()
 keyboard = Controller()
 
@@ -173,8 +178,10 @@ def summarize_conversation(conversations):
         conv_text += f"[{conv['time']}] NOVA: {conv['assistant']}\n\n"
     
     try:
+        if client is None:
+            return "API key not configured"
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama3-70b-8192",
             max_tokens=512,
             messages=[
                 {"role": "system", "content": "You are NOVA. Summarize the following conversation concisely, highlighting key topics discussed and any important information shared."},
@@ -261,9 +268,12 @@ def handle_task():
     data = request.json
     user_prompt = data.get("prompt", "")
 
+    if client is None:
+        return Response("API key not configured", status=500, mimetype='text/plain')
+
     def generate():
         stream = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama3-70b-8192",
             max_tokens=1024,
             stream=True,
             messages=[
@@ -283,6 +293,9 @@ def handle_chat():
     data = request.json
     messages = data.get("messages", [])
 
+    if client is None:
+        return Response("API key not configured", status=500, mimetype='text/plain')
+
     memories = load_memories()
     memory_context = ""
     if memories:
@@ -295,7 +308,7 @@ def handle_chat():
     def generate():
         nonlocal full_response
         stream = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama3-70b-8192",
             max_tokens=1024,
             stream=True,
             messages=[
