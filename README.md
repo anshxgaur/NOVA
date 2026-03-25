@@ -75,5 +75,5 @@ Engineered by 2nd-year Computer Science Engineering students at Pranveer Singh I
 </table>
 
 <div align="center">
-<sub>Built with ❤️ at [Insert Hackathon Name]</sub>
+<sub>Built with ❤️ at [HacXtreme]</sub>
 </div>
