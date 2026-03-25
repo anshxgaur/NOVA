@@ -60,6 +60,9 @@ sequenceDiagram
         S->>O: Authorized Payload
     end
     O-->>U: Final 2028-Spec Response
+```
+---
+
 
 👥 The Architects
 Engineered by 2nd-year Computer Science Engineering students at Pranveer Singh Institute of Technology (PSIT), strictly focused on architecting the high-performance domains of tomorrow.
