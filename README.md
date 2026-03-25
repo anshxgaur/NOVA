@@ -60,3 +60,17 @@ sequenceDiagram
         S->>O: Authorized Payload
     end
     O-->>U: Final 2028-Spec Response
+
+👥 The Architects
+Engineered by 2nd-year Computer Science Engineering students at Pranveer Singh Institute of Technology (PSIT), strictly focused on architecting the high-performance domains of tomorrow.
+
+<table align="center">
+<tr>
+<td align="center"><a href="https://github.com/anshxgaur"><img src="https://www.google.com/search?q=https://github.com/anshxgaur.png" width="100px;" style="border-radius:50%" alt=""/><br /><sub><b>Ansh Gaur</b></sub></a><br />Backend & ML Architect</td>
+<td align="center"><a href="https://www.google.com/search?q=https://github.com/Ankit-Contri"><img src="https://www.google.com/search?q=https://github.com/Ankit-Contri.png" width="100px;" style="border-radius:50%" alt=""/><br /><sub><b>Ankit</b></sub></a><br />AI Security Specialist</td>
+</tr>
+</table>
+
+<div align="center">
+<sub>Built with ❤️ at [Insert Hackathon Name]</sub>
+</div>
