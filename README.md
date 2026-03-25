@@ -1,18 +1,10 @@
-# 🌌 MODEL-X | Next-Gen AI Architecture
-> **The Future of [Insert One-Line Purpose, e.g., Decentralized Neural Processing]**
-
-[![GitHub Stars](https://img.shields.io/github/stars/anshxgaur/MODEL-X?style=for-the-badge&logo=github&color=FFD700)](https://github.com/anshxgaur/MODEL-X)
-[![B.Tech CSE](https://img.shields.io/badge/Academic-CSE%20PSIT-blue?style=for-the-badge&logo=googlescholar)](https://www.psit.ac.in/)
-[![Domain](https://img.shields.io/badge/Focus-AI%20Security%20%26%20ML-red?style=for-the-badge&logo=nvidia)](https://github.com/anshxgaur/MODEL-X)
-
-
 [SYSTEM-X INITIALIZING...]
 > Loading Neural Weights...................[ OK ]
 > Establishing Secure Tunnel...............[ OK ]
 > Checking AI Security Protocols...........[ ENCRYPTED ]
 > STATUS: 2028-READY | ARCHITECTURE: AGENTIC-NODE-X
 --------------------------------------------------
->    ___           ___           ___           ___     
+      ___           ___           ___           ___     
      /__/\         /  /\         /  /\         /  /\    
     |  |::\       /  /::\       /  /::\       /  /:/_   
     |  |:|:\     /  /:/\:\     /  /:/\:\     /  /:/ /\  
@@ -25,6 +17,14 @@
      \__\/         \__\/         \__\/         \__\/    
 --------------------------------------------------
 [ACCESS GRANTED: WELCOME TO THE FUTURE OF CSE]
+
+# 🌌 MODEL-X | Next-Gen AI Architecture
+> **The Future of [Insert One-Line Purpose, e.g., Decentralized Neural Processing]**
+
+[![GitHub Stars](https://img.shields.io/github/stars/anshxgaur/MODEL-X?style=for-the-badge&logo=github&color=FFD700)](https://github.com/anshxgaur/MODEL-X)
+[![B.Tech CSE](https://img.shields.io/badge/Academic-CSE%20PSIT-blue?style=for-the-badge&logo=googlescholar)](https://www.psit.ac.in/)
+[![Domain](https://img.shields.io/badge/Focus-AI%20Security%20%26%20ML-red?style=for-the-badge&logo=nvidia)](https://github.com/anshxgaur/MODEL-X)
+
 
 ---
 
