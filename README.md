@@ -26,33 +26,6 @@ Most current systems in **[Your Domain]** fail at **[Common Failure Point]**. **
 
 ---
 
-sequenceDiagram
-    autonumber
-    participant U as 🌐 End User
-    participant S as 🛡️ AI Security Gateway
-    participant O as 🧠 MODEL-X Orchestrator
-    participant M as 🤖 Neural Engine (LLM)
-    participant DB as 💾 Vector Database
-
-    Note over U, S: Phase 1: Zero-Trust Verification
-    U->>S: Encrypted Request (Prompt)
-    S->>S: Sanitize & Red-Team Check
-    alt Threat Detected
-        S-->>U: 403: Malicious Intent Blocked
-    else Clean Request
-        S->>O: Authorized Payload
-    end
-
-    Note over O, DB: Phase 2: Agentic Routing
-    O->>DB: Context Retrieval (RAG)
-    DB-->>O: Relevant Embeddings
-    O->>M: Optimized Context + Prompt
-    M-->>O: Generated Intelligence
-
-    Note over O, U: Phase 3: Edge Delivery
-    O->>U: Final 2028-Spec Response
-    Note right of U: Latency: < 150ms
-
 ## ⚙️ Technical Architecture
 This project is designed with a **Micro-Service Architecture** to ensure modularity and high availability.
 
