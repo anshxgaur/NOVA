@@ -1,5 +1,6 @@
 ![](Bottom_up.svg)
 <div align="center">
+  
 ### *The 2028-Ready AI Architecture & Security Framework*
 
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge&logo=github)](https://github.com/anshxgaur/MODEL-X/tree/ankit_contri)
