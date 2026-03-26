@@ -28,6 +28,7 @@
 | Poor real-time performance                  | Optimized streaming + async execution            |
 
 
+
 ## ⚙️ Design Principles
 
 - **Zero Trust Architecture** → No input is trusted by default  
