@@ -17,6 +17,77 @@
 ![](header.png)
 <a href="https://www.python.org/"><img src="https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg" align="right" height="52" width="52"></a>
 
+## 🎯 Problem → Solution Mapping
+
+| Problem                                      | Our Solution                                      |
+|---------------------------------------------|--------------------------------------------------|
+| High latency in cloud-based AI              | Local inference pipeline                         |
+| Privacy risks in voice data                 | On-device processing                             |
+| Vulnerability to prompt injection           | Pre-inference security layer                     |
+| Monolithic AI systems                       | Modular orchestration architecture               |
+| Poor real-time performance                  | Optimized streaming + async execution            |
+
+---
+
+## ⚙️ Design Principles
+
+- **Zero Trust Architecture** → No input is trusted by default  
+- **Edge-First Processing** → Compute happens locally  
+- **Modular Intelligence** → Multiple specialized components  
+- **Security Before Inference** → AI is never exposed directly  
+- **Real-Time Responsiveness** → Sub-200ms pipeline target  
+
+---
+
+## 🔄 End-to-End Pipeline Breakdown
+
+### Step 1: Voice Capture
+User input is captured via microphone in real-time.
+
+### Step 2: Speech-to-Text
+Audio is converted into structured text using local STT.
+
+### Step 3: Security Gateway
+- Input sanitization  
+- Prompt injection detection  
+- Threat classification  
+
+### Step 4: Orchestration Layer
+- Query decomposition  
+- Task routing  
+- Context handling  
+
+### Step 5: LLM Processing
+- Context-aware reasoning  
+- Response generation  
+
+### Step 6: Text-to-Speech
+Final response converted to natural speech output.
+
+---
+
+## 📊 Observability & Monitoring
+
+- 📈 Real-time latency tracking  
+- 🛡️ Threat detection logs  
+- 🔍 Query tracing across pipeline  
+- ⚠️ Error monitoring & alerting  
+
+Future Integration:
+- Prometheus + Grafana dashboards  
+- Centralized logging pipeline  
+
+---
+
+## ⚡ Performance Optimization
+
+- Quantized models for faster inference  
+- Asynchronous processing pipelines  
+- Parallel execution of modules  
+- Lightweight local models  
+- Caching frequent responses  
+
+
 
 ## 🚀 The Vision: Next-Gen AI
 As the tech landscape accelerates toward 2028, legacy AI models are vulnerable and inefficient. **MODEL-X** is engineered to bridge the gap between high-performance ML architecture and impenetrable AI security. It autonomously sanitizes inputs and optimizes neural inference right at the edge.
@@ -109,84 +180,3 @@ sequenceDiagram
   <img align="right" src="https://img.icons8.com/material-outlined/24/ffffff/github.png" alt="GitHub Icon">
 </a>
 
----
-
-## 🎯 Problem → Solution Mapping
-
-| Problem                                      | Our Solution                                      |
-|---------------------------------------------|--------------------------------------------------|
-| High latency in cloud-based AI              | Local inference pipeline                         |
-| Privacy risks in voice data                 | On-device processing                             |
-| Vulnerability to prompt injection           | Pre-inference security layer                     |
-| Monolithic AI systems                       | Modular orchestration architecture               |
-| Poor real-time performance                  | Optimized streaming + async execution            |
-
----
-
----
-
-## ⚙️ Design Principles
-
-- **Zero Trust Architecture** → No input is trusted by default  
-- **Edge-First Processing** → Compute happens locally  
-- **Modular Intelligence** → Multiple specialized components  
-- **Security Before Inference** → AI is never exposed directly  
-- **Real-Time Responsiveness** → Sub-200ms pipeline target  
-
----
-
----
-
-## 🔄 End-to-End Pipeline Breakdown
-
-### Step 1: Voice Capture
-User input is captured via microphone in real-time.
-
-### Step 2: Speech-to-Text
-Audio is converted into structured text using local STT.
-
-### Step 3: Security Gateway
-- Input sanitization  
-- Prompt injection detection  
-- Threat classification  
-
-### Step 4: Orchestration Layer
-- Query decomposition  
-- Task routing  
-- Context handling  
-
-### Step 5: LLM Processing
-- Context-aware reasoning  
-- Response generation  
-
-### Step 6: Text-to-Speech
-Final response converted to natural speech output.
-
----
-
----
-
-## 📊 Observability & Monitoring
-
-- 📈 Real-time latency tracking  
-- 🛡️ Threat detection logs  
-- 🔍 Query tracing across pipeline  
-- ⚠️ Error monitoring & alerting  
-
-Future Integration:
-- Prometheus + Grafana dashboards  
-- Centralized logging pipeline  
-
----
-
----
-
-## ⚡ Performance Optimization
-
-- Quantized models for faster inference  
-- Asynchronous processing pipelines  
-- Parallel execution of modules  
-- Lightweight local models  
-- Caching frequent responses  
-
----
