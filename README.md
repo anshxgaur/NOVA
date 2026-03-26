@@ -1,3 +1,5 @@
+![](Bottom_up.svg)
+
 <div align="center">
 
 # 🌌 MODEL-X
