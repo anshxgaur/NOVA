@@ -109,3 +109,16 @@ sequenceDiagram
   <img align="right" src="https://img.icons8.com/material-outlined/24/ffffff/github.png" alt="GitHub Icon">
 </a>
 
+---
+
+## 🎯 Problem → Solution Mapping
+
+| Problem                                      | Our Solution                                      |
+|---------------------------------------------|--------------------------------------------------|
+| High latency in cloud-based AI              | Local inference pipeline                         |
+| Privacy risks in voice data                 | On-device processing                             |
+| Vulnerability to prompt injection           | Pre-inference security layer                     |
+| Monolithic AI systems                       | Modular orchestration architecture               |
+| Poor real-time performance                  | Optimized streaming + async execution            |
+
+---
