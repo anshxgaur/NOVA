@@ -25,6 +25,21 @@ As the tech landscape accelerates toward 2028, legacy AI models are vulnerable a
   <img src="https://github.com/user-attachments/assets/754f7f48-57b4-4b8f-9054-b21ef7803698" width="300px" align="right" alt="A professional animation coder gif"/>
 </div>
 
+---
+
+## 🔄 Data Flow Pipeline
+
+```mermaid
+flowchart TD
+    A[Voice Input] --> B[Speech-to-Text]
+    B --> C[Security Gateway]
+    C --> D[Query Orchestrator]
+    D --> E[Model Routing]
+    E --> F[LLM Processing]
+    F --> G[Response Generator]
+    G --> H[Text-to-Speech]
+    H --> I[Audio Output]
+
 
 ### 🔥 Key Innovations
 * **Autonomous Red Teaming:** A self-healing architecture that patches prompt injection vulnerabilities and isolates threats in real-time.
