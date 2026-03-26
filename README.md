@@ -27,20 +27,6 @@ As the tech landscape accelerates toward 2028, legacy AI models are vulnerable a
 
 ---
 
-## 🔄 Data Flow Pipeline
-
-```mermaid
-flowchart TD
-    A[Voice Input] --> B[Speech-to-Text]
-    B --> C[Security Gateway]
-    C --> D[Query Orchestrator]
-    D --> E[Model Routing]
-    E --> F[LLM Processing]
-    F --> G[Response Generator]
-    G --> H[Text-to-Speech]
-    H --> I[Audio Output]
-
-
 ### 🔥 Key Innovations
 * **Autonomous Red Teaming:** A self-healing architecture that patches prompt injection vulnerabilities and isolates threats in real-time.
 * **Agentic Orchestration:** Dynamically routes complex queries to specialized sub-models for optimized, low-latency compute.
