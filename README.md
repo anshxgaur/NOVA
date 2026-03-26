@@ -49,7 +49,7 @@ Security cannot be an afterthought; it must be the gateway.
   <p><i>Detecting, isolating, and neutralizing an adversarial prompt attack before inference.</i></p>
 </div>
 
-
+```mermaid
 flowchart LR
     A[User Query] --> B[Orchestrator]
     B --> C[Model Router]
@@ -60,6 +60,7 @@ flowchart LR
     D2 --> E
     D3 --> E
     E --> F[Final Response]
+```
     
 ---
 
