@@ -1,4 +1,5 @@
-# NOVA Interface v2.0 — AI Assistant
+![](Bottom_up.svg)
+
 <p align="center">
   <b>Ansh Gaur</b><br>
   <i>A futuristic AI assistant powered by Groq's ultra-fast LPU inference</i>
