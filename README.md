@@ -49,6 +49,18 @@ Security cannot be an afterthought; it must be the gateway.
   <p><i>Detecting, isolating, and neutralizing an adversarial prompt attack before inference.</i></p>
 </div>
 
+
+flowchart LR
+    A[User Query] --> B[Orchestrator]
+    B --> C[Model Router]
+    C --> D1[Reasoning Model]
+    C --> D2[Retrieval Engine]
+    C --> D3[Tool Executor]
+    D1 --> E[Aggregator]
+    D2 --> E
+    D3 --> E
+    E --> F[Final Response]
+    
 ---
 
 ## ⚙️ System Architecture
