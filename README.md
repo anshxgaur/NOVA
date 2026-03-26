@@ -31,6 +31,7 @@ As the tech landscape accelerates toward 2028, legacy AI models are vulnerable a
 * **Agentic Orchestration:** Dynamically routes complex queries to specialized sub-models for optimized, low-latency compute.
 * **Zero-Latency Inference:** Fully quantized pipeline ensuring split-second response times without sacrificing data privacy.
 
+---
 
 
 ## 🎬 Core Features & Logic Flow
