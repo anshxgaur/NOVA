@@ -79,10 +79,7 @@ Future Integration:
 
 ---
 
-<img src="assets/monitoring.gif" align="right" width="300" />
-
-<br/>
-
+<img src="assets/monitoring.gif" align="right" width="200" style="margin-left: 20px; margin-top: 10px;" />
 
 ## ⚡ Performance Optimization
 
