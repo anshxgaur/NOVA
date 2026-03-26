@@ -78,10 +78,10 @@ sequenceDiagram
 ## <div><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Globe%20with%20Meridians.png" alt="Globe with Meridians Emoji" width="30px" align="center" /> Let's Stay Connected:</div>
   
 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ankit-shukla-877705285/) 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ansh-gaur-46b7a4378/) 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ananya-gupta-415658339/) 
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/srivastavaaarush/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Ankit%20Shukla20%-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ankit-shukla-877705285/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Ansh%20Gaur%20-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ansh-gaur-46b7a4378/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Ananya%20Gupta%20-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ananya-gupta-415658339/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Aarush%20Srivastava%20-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/srivastavaaarush/) 
 
 <div align="center">
 <sub>Built with ❤️ at [HacXtreme]</sub>
