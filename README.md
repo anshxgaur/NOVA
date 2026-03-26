@@ -163,3 +163,18 @@ Audio is converted into structured text using local STT.
 Final response converted to natural speech output.
 
 ---
+
+---
+
+## 📊 Observability & Monitoring
+
+- 📈 Real-time latency tracking  
+- 🛡️ Threat detection logs  
+- 🔍 Query tracing across pipeline  
+- ⚠️ Error monitoring & alerting  
+
+Future Integration:
+- Prometheus + Grafana dashboards  
+- Centralized logging pipeline  
+
+---
