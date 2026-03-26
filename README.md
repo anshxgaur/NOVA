@@ -9,9 +9,6 @@
 [![Domain](https://img.shields.io/badge/Domain-AI%20Security%20%7C%20ML%20Architecture-red?style=for-the-badge&logo=shield)](https://github.com/anshxgaur/MODEL-X/tree/ankit_contri)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
 
-<video src="YOUR_15_SEC_MAIN_DEMO_URL_HERE.mp4" width="100%" autoplay loop muted playsinline></video>
-  <p><i>Real-time Neural Processing & Security Protocol Initiation</i></p>
-
 [✨ Try the Live Demo](YOUR_DEPLOYMENT_LINK) • [📚 Read the Docs](YOUR_WIKI_LINK) • [🛡️ Report Bug](YOUR_ISSUES_LINK)
 </div>
 
