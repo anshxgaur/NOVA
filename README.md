@@ -74,14 +74,14 @@ sequenceDiagram
 
 
 👥 The Architects
-Engineered by 2nd-year Computer Science Engineering students at Pranveer Singh Institute of Technology (PSIT), strictly focused on architecting the high-performance domains of tomorrow.
 
-<table align="center">
-<tr>
-<td align="center"><a href="https://github.com/anshxgaur"><img src="https://www.google.com/search?q=https://github.com/anshxgaur.png" width="100px;" style="border-radius:50%" alt=""/><br /><sub><b>Ansh Gaur</b></sub></a><br />Backend & ML Architect</td>
-<td align="center"><a href="https://www.google.com/search?q=https://github.com/Ankit-Contri"><img src="https://www.google.com/search?q=https://github.com/Ankit-Contri.png" width="100px;" style="border-radius:50%" alt=""/><br /><sub><b>Ankit</b></sub></a><br />AI Security Specialist</td>
-</tr>
-</table>
+## <div><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Travel%20and%20places/Globe%20with%20Meridians.png" alt="Globe with Meridians Emoji" width="30px" align="center" /> Let's Stay Connected:</div>
+  
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ankit-shukla-877705285/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ansh-gaur-46b7a4378/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/ananya-gupta-415658339/) 
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Join%20My%20Network-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/srivastavaaarush/) 
 
 <div align="center">
 <sub>Built with ❤️ at [HacXtreme]</sub>
