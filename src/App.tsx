@@ -1,6 +1,6 @@
 import { NovaInterface } from './components/NovaInterface';
 import { useState, useEffect } from 'react';
-import { getAccelerationMode } from './runanywhere';
+import { getNovaStatus, getSourceLabel, type AISource } from './runanywhere';
 import { VisionTab } from './components/VisionTab';
 import { VoiceTab } from './components/VoiceTab';
 import { ToolsTab } from './components/ToolsTab';
@@ -9,33 +9,29 @@ type Tab = 'chat' | 'vision' | 'voice' | 'tools';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<Tab>('chat');
-  const [accel, setAccel] = useState<string | null>(null);
+  const [source, setSource] = useState<AISource>('ollama');
 
   useEffect(() => {
-    // Only init SDK lazily if Vision/Voice tabs are needed
-    // Don't block the UI on startup anymore
-    try {
-      const mode = getAccelerationMode();
-      setAccel(mode);
-    } catch {
-      // SDK not init yet — that's fine
-    }
+    // Check NOVA system status on load
+    getNovaStatus().then(status => {
+      setSource(status.source);
+    }).catch(() => {
+      setSource('groq');
+    });
   }, []);
 
   return (
     <>
-      {/* 🔥 Your main futuristic UI — loads instantly now */}
+      {/* 🔥 Main futuristic UI — loads instantly */}
       <NovaInterface />
 
       {/* 🔒 Hidden debug panel */}
       <div className="app" style={{ display: 'none' }}>
         <header className="app-header">
           <h1>NOVA AI</h1>
-          {accel && (
-            <span className="badge">
-              {accel === 'webgpu' ? 'WebGPU 🚀' : 'CPU 🛡️'}
-            </span>
-          )}
+          <span className="badge">
+            {getSourceLabel(source)}
+          </span>
         </header>
 
         <nav className="tab-bar">

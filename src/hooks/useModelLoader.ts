@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef } from 'react';
-import { ModelManager, ModelCategory, EventBus } from '@runanywhere/web';
 
 export type LoaderState = 'idle' | 'downloading' | 'loading' | 'ready' | 'error';
 
@@ -10,77 +9,78 @@ interface ModelLoaderResult {
   ensure: () => Promise<boolean>;
 }
 
+const OLLAMA_URL = 'http://localhost:11434';
+const OLLAMA_MODEL = 'qwen3:4b';
+
 /**
- * Hook to download + load models for a given category.
- * Tracks download progress and loading state.
- *
- * @param category - Which model category to ensure is loaded.
- * @param coexist  - If true, only unload same-category models (allows STT+LLM+TTS to coexist).
+ * Hook to check if Ollama model is ready.
+ * Replaces the old RunAnywhere SDK model loader.
  */
-export function useModelLoader(category: ModelCategory, coexist = false): ModelLoaderResult {
-  const [state, setState] = useState<LoaderState>(() =>
-    ModelManager.getLoadedModel(category) ? 'ready' : 'idle',
-  );
+export function useModelLoader(_category?: string, _coexist = false): ModelLoaderResult {
+  const [state, setState] = useState<LoaderState>('idle');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const loadingRef = useRef(false);
 
   const ensure = useCallback(async (): Promise<boolean> => {
-    // Already loaded
-    if (ModelManager.getLoadedModel(category)) {
-      setState('ready');
-      return true;
-    }
-
+    if (state === 'ready') return true;
     if (loadingRef.current) return false;
     loadingRef.current = true;
 
     try {
-      // Find a model for this category
-      const models = ModelManager.getModels().filter((m) => m.modality === category);
-      if (models.length === 0) {
-        setError(`No ${category} model registered`);
-        setState('error');
-        return false;
+      setState('loading');
+      setProgress(0);
+
+      // ── Step 1: Check if Ollama is running ──
+      const pingRes = await fetch(OLLAMA_URL, {
+        signal: AbortSignal.timeout(3000)
+      });
+
+      if (!pingRes.ok) {
+        throw new Error('Ollama is not running. Please start it with: ollama serve');
       }
 
-      const model = models[0];
+      setProgress(0.3);
 
-      // Download if needed
-      if (model.status !== 'downloaded' && model.status !== 'loaded') {
+      // ── Step 2: Check if model is available ──
+      const tagsRes = await fetch(`${OLLAMA_URL}/api/tags`);
+      const tagsData = await tagsRes.json();
+      const models: string[] = (tagsData.models || []).map((m: any) => m.name);
+      const modelAvailable = models.some(m => m.startsWith(OLLAMA_MODEL.split(':')[0]));
+
+      setProgress(0.6);
+
+      if (!modelAvailable) {
+        // ── Step 3: Pull model if not available ──
         setState('downloading');
-        setProgress(0);
+        console.log(`[NOVA] Pulling model ${OLLAMA_MODEL}...`);
 
-        const unsub = EventBus.shared.on('model.downloadProgress', (evt) => {
-          if (evt.modelId === model.id) {
-            setProgress(evt.progress ?? 0);
-          }
+        const pullRes = await fetch(`${OLLAMA_URL}/api/pull`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: OLLAMA_MODEL, stream: false }),
         });
 
-        await ModelManager.downloadModel(model.id);
-        unsub();
-        setProgress(1);
+        if (!pullRes.ok) {
+          throw new Error(`Failed to pull model: ${pullRes.statusText}`);
+        }
       }
 
-      // Load
-      setState('loading');
-      const ok = await ModelManager.loadModel(model.id, { coexist });
-      if (ok) {
-        setState('ready');
-        return true;
-      } else {
-        setError('Failed to load model');
-        setState('error');
-        return false;
-      }
+      setProgress(1);
+      setState('ready');
+      console.log(`[NOVA] Model ${OLLAMA_MODEL} is ready ✅`);
+      return true;
+
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
       setState('error');
+      console.error('[NOVA] Model loader error:', msg);
       return false;
     } finally {
       loadingRef.current = false;
     }
-  }, [category, coexist]);
+  }, [state]);
 
   return { state, progress, error, ensure };
 }

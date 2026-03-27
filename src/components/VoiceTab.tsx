@@ -1,190 +1,155 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { VoicePipeline, ModelCategory, ModelManager, AudioCapture, AudioPlayback, SpeechActivity } from '@runanywhere/web';
-import { VAD } from '@runanywhere/web-onnx';
 import { useModelLoader } from '../hooks/useModelLoader';
-import { ModelBanner } from './ModelBanner';
 
 type VoiceState = 'idle' | 'loading-models' | 'listening' | 'processing' | 'speaking';
 
 export function VoiceTab() {
-  const llmLoader = useModelLoader(ModelCategory.Language, true);
-  const sttLoader = useModelLoader(ModelCategory.SpeechRecognition, true);
-  const ttsLoader = useModelLoader(ModelCategory.SpeechSynthesis, true);
-  const vadLoader = useModelLoader(ModelCategory.Audio, true);
+  const loader = useModelLoader('language', true);
 
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
-  const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const micRef = useRef<AudioCapture | null>(null);
-  const pipelineRef = useRef<VoicePipeline | null>(null);
-  const vadUnsub = useRef<(() => void) | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const isMountedRef = useRef(true);
 
-  // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
-      micRef.current?.stop();
-      vadUnsub.current?.();
+      isMountedRef.current = false;
+      recognitionRef.current?.stop();
     };
   }, []);
 
-  // Ensure all 4 models are loaded
-  const ensureModels = useCallback(async (): Promise<boolean> => {
-    setVoiceState('loading-models');
-    setError(null);
+  // ── Send transcript to NOVA backend ──
+  const processTranscript = useCallback(async (text: string) => {
+    if (!text.trim()) return;
 
-    const results = await Promise.all([
-      vadLoader.ensure(),
-      sttLoader.ensure(),
-      llmLoader.ensure(),
-      ttsLoader.ensure(),
-    ]);
+    setVoiceState('processing');
+    setTranscript(text);
 
-    if (results.every(Boolean)) {
-      setVoiceState('idle');
-      return true;
+    try {
+      const res = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: text }]
+        }),
+      });
+
+      if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        if (isMountedRef.current) setResponse(accumulated);
+      }
+
+      // ── Speak the response ──
+      if (accumulated && window.speechSynthesis) {
+        setVoiceState('speaking');
+        const utterance = new SpeechSynthesisUtterance(accumulated);
+        utterance.lang = 'en-IN';
+        utterance.rate = 1.0;
+        utterance.onend = () => {
+          if (isMountedRef.current) setVoiceState('idle');
+        };
+        window.speechSynthesis.speak(utterance);
+      } else {
+        setVoiceState('idle');
+      }
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (isMountedRef.current) {
+        setError(msg);
+        setVoiceState('idle');
+      }
     }
+  }, []);
 
-    setError('Failed to load one or more voice models');
-    setVoiceState('idle');
-    return false;
-  }, [vadLoader, sttLoader, llmLoader, ttsLoader]);
-
-  // Start listening
+  // ── Start listening ──
   const startListening = useCallback(async () => {
     setTranscript('');
     setResponse('');
     setError(null);
 
-    // Load models if needed
-    const anyMissing = !ModelManager.getLoadedModel(ModelCategory.Audio)
-      || !ModelManager.getLoadedModel(ModelCategory.SpeechRecognition)
-      || !ModelManager.getLoadedModel(ModelCategory.Language)
-      || !ModelManager.getLoadedModel(ModelCategory.SpeechSynthesis);
-
-    if (anyMissing) {
-      const ok = await ensureModels();
-      if (!ok) return;
+    // Ensure Ollama is ready
+    if (loader.state !== 'ready') {
+      setVoiceState('loading-models');
+      const ok = await loader.ensure();
+      if (!ok) {
+        setError('Could not connect to Ollama. Make sure it is running.');
+        setVoiceState('idle');
+        return;
+      }
     }
 
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setError('Speech recognition not supported. Please use Chrome or Edge.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event: any) => {
+      const text = event.results[0][0].transcript;
+      processTranscript(text);
+    };
+
+    recognition.onerror = (event: any) => {
+      if (event.error !== 'aborted') {
+        setError(`Mic error: ${event.error}`);
+        setVoiceState('idle');
+      }
+    };
+
+    recognition.onend = () => {
+      if (isMountedRef.current && voiceState === 'listening') {
+        setVoiceState('idle');
+      }
+    };
+
+    recognitionRef.current = recognition;
     setVoiceState('listening');
-
-    const mic = new AudioCapture({ sampleRate: 16000 });
-    micRef.current = mic;
-
-    if (!pipelineRef.current) {
-      pipelineRef.current = new VoicePipeline();
-    }
-
-    // Start VAD + mic
-    VAD.reset();
-
-    vadUnsub.current = VAD.onSpeechActivity((activity) => {
-      if (activity === SpeechActivity.Ended) {
-        const segment = VAD.popSpeechSegment();
-        if (segment && segment.samples.length > 1600) {
-          processSpeech(segment.samples);
-        }
-      }
-    });
-
-    await mic.start(
-      (chunk) => { VAD.processSamples(chunk); },
-      (level) => { setAudioLevel(level); },
-    );
-  }, [ensureModels]);
-
-  // Process a speech segment through the full pipeline
-  const processSpeech = useCallback(async (audioData: Float32Array) => {
-    const pipeline = pipelineRef.current;
-    if (!pipeline) return;
-
-    // Stop mic during processing
-    micRef.current?.stop();
-    vadUnsub.current?.();
-    setVoiceState('processing');
-
-    try {
-      const result = await pipeline.processTurn(audioData, {
-        maxTokens: 60,
-        temperature: 0.7,
-        systemPrompt: 'You are a helpful voice assistant. Keep responses concise — 1-2 sentences max.',
-      }, {
-        onTranscription: (text) => {
-          setTranscript(text);
-        },
-        onResponseToken: (_token, accumulated) => {
-          setResponse(accumulated);
-        },
-        onResponseComplete: (text) => {
-          setResponse(text);
-        },
-        onSynthesisComplete: async (audio, sampleRate) => {
-          setVoiceState('speaking');
-          const player = new AudioPlayback({ sampleRate });
-          await player.play(audio, sampleRate);
-          player.dispose();
-        },
-        onStateChange: (s) => {
-          if (s === 'processingSTT') setVoiceState('processing');
-          if (s === 'generatingResponse') setVoiceState('processing');
-          if (s === 'playingTTS') setVoiceState('speaking');
-        },
-      });
-
-      if (result) {
-        setTranscript(result.transcription);
-        setResponse(result.response);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-
-    setVoiceState('idle');
-    setAudioLevel(0);
-  }, []);
+    recognition.start();
+  }, [loader, processTranscript, voiceState]);
 
   const stopListening = useCallback(() => {
-    micRef.current?.stop();
-    vadUnsub.current?.();
+    recognitionRef.current?.stop();
     setVoiceState('idle');
-    setAudioLevel(0);
   }, []);
-
-  // Which loaders are still loading?
-  const pendingLoaders = [
-    { label: 'VAD', loader: vadLoader },
-    { label: 'STT', loader: sttLoader },
-    { label: 'LLM', loader: llmLoader },
-    { label: 'TTS', loader: ttsLoader },
-  ].filter((l) => l.loader.state !== 'ready');
 
   return (
     <div className="tab-panel voice-panel">
-      {pendingLoaders.length > 0 && voiceState === 'idle' && (
-        <ModelBanner
-          state={pendingLoaders[0].loader.state}
-          progress={pendingLoaders[0].loader.progress}
-          error={pendingLoaders[0].loader.error}
-          onLoad={ensureModels}
-          label={`Voice (${pendingLoaders.map((l) => l.label).join(', ')})`}
-        />
+      {error && (
+        <div className="model-banner">
+          <span className="error-text">{error}</span>
+        </div>
       )}
 
-      {error && <div className="model-banner"><span className="error-text">{error}</span></div>}
-
       <div className="voice-center">
-        <div className="voice-orb" data-state={voiceState} style={{ '--level': audioLevel } as React.CSSProperties}>
+        <div className="voice-orb" data-state={voiceState}>
           <div className="voice-orb-inner" />
         </div>
 
         <p className="voice-status">
           {voiceState === 'idle' && 'Tap to start listening'}
-          {voiceState === 'loading-models' && 'Loading models...'}
+          {voiceState === 'loading-models' && 'Connecting to Ollama...'}
           {voiceState === 'listening' && 'Listening... speak now'}
-          {voiceState === 'processing' && 'Processing...'}
+          {voiceState === 'processing' && 'Processing with NOVA...'}
           {voiceState === 'speaking' && 'Speaking...'}
         </p>
 
@@ -212,7 +177,7 @@ export function VoiceTab() {
 
       {response && (
         <div className="voice-response">
-          <h4>AI response:</h4>
+          <h4>NOVA response:</h4>
           <p>{response}</p>
         </div>
       )}

@@ -1,0 +1,1 @@
+﻿src/components/NovaInterface.tsx(547,1): error TS1434: Unexpected keyword or identifier.

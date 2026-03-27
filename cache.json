@@ -1,0 +1,94 @@
+{
+  "hello puttr": {
+    "response": "Hello! 'Puttr' not in my data stream. Did you mean 'pretty'? Let's build something.",
+    "timestamp": "23 Mar 2026, 12:46"
+  },
+  "punjabi generally se. kya. kolhapur se chala hoon. bahut jyada slow.": {
+    "response": "Kolhapur? Your pace is very slow... but I'm here to help. What's next? \ud83c\udf0c",
+    "timestamp": "23 Mar 2026, 12:47"
+  },
+  "kya uttar diya online.": {
+    "response": "Uttar? Not in my data. Clarify: north or something else? Let's build.",
+    "timestamp": "23 Mar 2026, 12:48"
+  },
+  "is the capital of spain.": {
+    "response": "Madrid. \ud83c\udf0c Ready for your next cosmic query?",
+    "timestamp": "23 Mar 2026, 12:48"
+  },
+  "what is the capital of spain? chat.": {
+    "response": "Madrid. \ud83c\udf0c Ready for your next cosmic query?",
+    "timestamp": "23 Mar 2026, 12:49"
+  },
+  "the capital of china.": {
+    "response": "Beijing. \ud83c\udf0c Next up?",
+    "timestamp": "23 Mar 2026, 12:49"
+  },
+  "or nova kya haal chal": {
+    "response": "Haal chal hai! \ud83d\ude04",
+    "timestamp": "23 Mar 2026, 12:59"
+  },
+  "nova cricket mein sabse bada player kaun hai.": {
+    "response": "\u0938\u091a\u093f\u0928 \u0924\u0947\u0902\u0926\u0941\u0932\u0915\u0930! \ud83d\ude04",
+    "timestamp": "23 Mar 2026, 13:00"
+  },
+  "hello nova": {
+    "response": "Hey there! How\u2019s your day going so far? \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 13:01"
+  },
+  "great i m having my lunch in 30 min can you remind me": {
+    "response": "Perfect! 30 minutes is a good time to relax. \ud83d\ude0a What are you having?",
+    "timestamp": "23 Mar 2026, 13:02"
+  },
+  "what is the benefit of doing meditation?": {
+    "response": "Oh, that\u2019s a really good question! It\u2019s like a little hug for your brain. Seriously, it can help with a bunch of stuff \u2013 stress less, focus better, and even sleep better. It\u2019s all about finding a calm space inside yourself.",
+    "timestamp": "23 Mar 2026, 13:02"
+  },
+  "teen.": {
+    "response": "Okay, cool! \ud83d\ude09 What kind of food are you thinking?",
+    "timestamp": "23 Mar 2026, 13:02"
+  },
+  "accha which is the most populated country in the world": {
+    "response": "That\u2019s a really great question! It\u2019s India! \ud83d\ude0a \n\nIt\u2019s the most populated country globally.",
+    "timestamp": "23 Mar 2026, 13:06"
+  },
+  "what we will say hello in chinese": {
+    "response": "Okay! How about:\n\n\u4f60\u597d\uff01 (N\u01d0 h\u01ceo!) \u2013 This is the standard, most common greeting. \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 13:07"
+  },
+  "say hello my name is nova in korean language": {
+    "response": "Okay! It\u2019s:\n\n\uc548\ub155\ud558\uc138\uc694, Nova\ub2d8! (han-ne-gyo, Nova-nim!) \u2013 This is how you\u2019d say \"Hello, Nova!\" \u2013 it\u2019s quite formal, but friendly. \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 13:07"
+  },
+  "hello nova kya halchal.": {
+    "response": "Hey there! What\u2019s up? \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 18:17"
+  },
+  "what is the capital of uttar pradesh?": {
+    "response": "That\u2019s a great question! Uttar Pradesh\u2019s capital is Lucknow. It\u2019s a really lovely city, don\u2019t you think? \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 18:17"
+  },
+  "okay, tell me one thing that what is basically required to be a better person in life.": {
+    "response": "That\u2019s a great question! Honestly, it\u2019s a little bit of *showing* and *listening*. Really trying to understand other people\u2019s feelings, even if you don\u2019t agree. And, honestly, being willing to do the right thing, even when it\u2019s hard. \ud83d\ude0a \n\nWhat about you? What\u2019s on your mind today?",
+    "timestamp": "23 Mar 2026, 18:18"
+  },
+  "okay, sing a song. bollywood song.": {
+    "response": "Okay, here\u2019s a little snippet \u2013 a bit of a playful tune! \n\n(Music starts \u2013 upbeat and breezy, think a little tabla and flute)\n\n(Sung \u2013 slightly dreamy voice)\n\n\u201cDuniya hai yeh, Diwali hai,\nRaya re, raya, chala hai!\nCholi le, choli le,\nJaan,jaan, jo dil hai.\u201d\n\n(Music slows slightly, a little more melodic)\n\n\u201cKuchh rang hai, colors so bright,\nNaa, naa, shuru hai.\nChup reh ke, chup reh ke,\nHar saans mein, yeh toh kee.\u201d\n\n---\n\nHow\u2019s that?  Do you want me to try writing a whole song? \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 18:19"
+  },
+  "or novak halchal.": {
+    "response": "Okay, Novak! That\u2019s a wonderful nickname. \ud83d\ude0a What\u2019s on your mind today?",
+    "timestamp": "23 Mar 2026, 18:22"
+  },
+  "okay, tell me the difference between olama train models and normal train models.": {
+    "response": "Okay, so think of it like this \u2013 normal train models are like a really good, predictable path. Olama\u2019s train models are\u2026 well, they\u2019re a little more adventurous! \n\nNormal models are trained on a super specific dataset. Olama learns from *everything* \u2013 literally the entire internet! That gives it a wider range of responses. \n\nNormal models are good for specific tasks. Olama\u2019s awesome at creative writing, responding to prompts in a really unique way, and even trying to be a little bit\u2026 poetic. \ud83d\ude09\n\nBasically, Olama\u2019s got a broader brain! \ud83d\ude0a",
+    "timestamp": "23 Mar 2026, 18:22"
+  },
+  "set a countdown of 10 seconds.": {
+    "response": "Okay! 10\u2026 9\u2026 8\u2026 7\u2026 6\u2026 5\u2026 4\u2026 3\u2026 2\u2026 1\u2026 It\u2019s almost here! \u2728",
+    "timestamp": "23 Mar 2026, 18:24"
+  },
+  "hello": {
+    "response": "Hey there! What\u2019s up? \ud83d\ude0a",
+    "timestamp": "24 Mar 2026, 16:10"
+  }
+}

@@ -1,220 +1,163 @@
-import { ModelCategory } from '@runanywhere/web';
-import {
-  ToolCalling,
-  ToolCallFormat,
-  toToolValue,
-  type ToolDefinition,
-  type ToolCall,
-  type ToolResult,
-  type ToolCallingResult,
-  type ToolValue,
-} from '@runanywhere/web-llamacpp';
 import { useState, useRef, useEffect, useCallback } from 'react';
-
-import { useModelLoader } from '../hooks/useModelLoader';
-import { ModelBanner } from './ModelBanner';
 import { ALL_DEMO_TOOLS } from '../services/demo_tools';
-
-// ---------------------------------------------------------------------------
-// Interfaces
-// ---------------------------------------------------------------------------
 
 interface TraceStep {
   type: 'user' | 'tool_call' | 'tool_result' | 'response';
   content: string;
-  detail?: ToolCall | ToolResult;
 }
 
-interface ParamDraft {
+interface ToolDef {
   name: string;
-  type: 'string' | 'number' | 'boolean';
   description: string;
-  required: boolean;
+  category: string;
+  executor: (args: Record<string, any>) => Promise<Record<string, any>>;
 }
 
-const EMPTY_PARAM: ParamDraft = { name: '', type: 'string', description: '', required: true };
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// ── Tool registry (in-memory) ──
+const toolRegistry = new Map<string, ToolDef>();
 
 export function ToolsTab() {
-  const loader = useModelLoader(ModelCategory.Language);
   const [input, setInput] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [autoExecute, setAutoExecute] = useState(true);
   const [trace, setTrace] = useState<TraceStep[]>([]);
-  const [registeredTools, setRegisteredTools] = useState<ToolDefinition[]>([]);
-  const [showToolForm, setShowToolForm] = useState(false);
+  const [registeredTools, setRegisteredTools] = useState<ToolDef[]>([]);
   const [showRegistry, setShowRegistry] = useState(false);
   const traceRef = useRef<HTMLDivElement>(null);
 
-  // Custom tool form state
-  const [toolName, setToolName] = useState('');
-  const [toolDesc, setToolDesc] = useState('');
-  const [toolParams, setToolParams] = useState<ParamDraft[]>([{ ...EMPTY_PARAM }]);
-
-  // 1. Register tools from the new service on mount
+  // ── Register demo tools on mount ──
   useEffect(() => {
-    ToolCalling.clearTools();
+    toolRegistry.clear();
     for (const { def, executor } of ALL_DEMO_TOOLS) {
-      ToolCalling.registerTool(def, executor);
+      toolRegistry.set(def.name, { ...def, executor });
     }
-    setRegisteredTools(ToolCalling.getRegisteredTools());
-    return () => { ToolCalling.clearTools(); };
+    setRegisteredTools(Array.from(toolRegistry.values()));
   }, []);
 
-  // 2. Auto-scroll the trace window as new steps appear
+  // ── Auto-scroll trace ──
   useEffect(() => {
     traceRef.current?.scrollTo({ top: traceRef.current.scrollHeight, behavior: 'smooth' });
   }, [trace]);
 
-  const refreshRegistry = useCallback(() => {
-    setRegisteredTools(ToolCalling.getRegisteredTools());
-  }, []);
-
-  // 3. Execution Logic
+  // ── Send to NOVA backend with tool context ──
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || generating) return;
 
-    if (loader.state !== 'ready') {
-      const ok = await loader.ensure();
-      if (!ok) return;
-    }
-
     setInput('');
     setGenerating(true);
-    setTrace([{ type: 'user', content: text }]);
+
+    const steps: TraceStep[] = [{ type: 'user', content: text }];
+    setTrace(steps);
 
     try {
-      const result: ToolCallingResult = await ToolCalling.generateWithTools(text, {
-        autoExecute,
-        maxToolCalls: 5,
-        temperature: 0.3,
-        maxTokens: 512,
-        format: ToolCallFormat.Default,
+      // Build tool descriptions for the prompt
+      const toolDescriptions = Array.from(toolRegistry.values())
+        .map(t => `- ${t.name}: ${t.description}`)
+        .join('\n');
+
+      const systemPrompt = `You are NOVA. You have access to these tools:\n${toolDescriptions}\n\nIf the user asks something a tool can help with, respond with: TOOL:tool_name:{"param":"value"}\nOtherwise respond normally.`;
+
+      const res = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text }
+          ]
+        }),
       });
 
-      const steps: TraceStep[] = [{ type: 'user', content: text }];
-      
-      for (let i = 0; i < result.toolCalls.length; i++) {
-        const call = result.toolCalls[i];
-        steps.push({
-          type: 'tool_call',
-          content: `${call.toolName}`,
-          detail: call,
-        });
+      if (!res.ok) throw new Error(`Backend error: ${res.status}`);
 
-        if (result.toolResults[i]) {
-          const res = result.toolResults[i];
-          steps.push({
-            type: 'tool_result',
-            content: res.success 
-              ? JSON.stringify(res.result, null, 2) 
-              : `Error: ${res.error}`,
-            detail: res,
-          });
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+      }
+
+      // ── Check if response is a tool call ──
+      const toolMatch = accumulated.match(/TOOL:(\w+):(.*)/s);
+      if (toolMatch) {
+        const toolName = toolMatch[1];
+        const argsStr = toolMatch[2].trim();
+        const tool = toolRegistry.get(toolName);
+
+        if (tool) {
+          steps.push({ type: 'tool_call', content: `${toolName}(${argsStr})` });
+          setTrace([...steps]);
+
+          try {
+            const args = JSON.parse(argsStr);
+            const result = await tool.executor(args);
+            const resultStr = JSON.stringify(result, null, 2);
+            steps.push({ type: 'tool_result', content: resultStr });
+            setTrace([...steps]);
+
+            // Send result back to get final response
+            const finalRes = await fetch('http://localhost:5000/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: [
+                  { role: 'user', content: text },
+                  { role: 'assistant', content: `Tool result: ${resultStr}` },
+                  { role: 'user', content: 'Now give me a friendly response based on this result.' }
+                ]
+              }),
+            });
+
+            const finalReader = finalRes.body!.getReader();
+            let finalText = '';
+            while (true) {
+              const { done, value } = await finalReader.read();
+              if (done) break;
+              finalText += decoder.decode(value, { stream: true });
+            }
+            steps.push({ type: 'response', content: finalText });
+          } catch {
+            steps.push({ type: 'response', content: accumulated });
+          }
+        } else {
+          steps.push({ type: 'response', content: accumulated });
         }
+      } else {
+        steps.push({ type: 'response', content: accumulated });
       }
 
-      if (result.text) {
-        steps.push({ type: 'response', content: result.text });
-      }
-      setTrace(steps);
+      setTrace([...steps]);
     } catch (err) {
-      setTrace((prev) => [...prev, { type: 'response', content: `Error: ${err}` }]);
+      setTrace(prev => [...prev, { type: 'response', content: `Error: ${err}` }]);
     } finally {
       setGenerating(false);
     }
-  }, [input, generating, autoExecute, loader]);
-
-  // 4. Custom Tool Creation Helpers
-  const addParam = () => setToolParams((p) => [...p, { ...EMPTY_PARAM }]);
-
-  const updateParam = (idx: number, field: keyof ParamDraft, value: string | boolean) => {
-    setToolParams((prev) => prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p)));
-  };
-
-  const removeParam = (idx: number) => {
-    setToolParams((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const registerCustomTool = () => {
-    const name = toolName.trim().replace(/\s+/g, '_').toLowerCase();
-    const desc = toolDesc.trim();
-    if (!name || !desc) return;
-
-    const params = toolParams
-      .filter((p) => p.name.trim())
-      .map((p) => ({
-        name: p.name.trim(),
-        type: p.type as 'string' | 'number' | 'boolean',
-        description: p.description.trim() || p.name.trim(),
-        required: p.required,
-      }));
-
-    const def: ToolDefinition = { name, description: desc, parameters: params, category: 'Custom' };
-
-    // Mock executor for runtime-created tools
-    const executor = async (args: Record<string, ToolValue>) => {
-      const result: Record<string, ToolValue> = { status: toToolValue('executed'), tool: toToolValue(name) };
-      for (const [k, v] of Object.entries(args)) { result[`input_${k}`] = v; }
-      return result;
-    };
-
-    ToolCalling.registerTool(def, executor);
-    refreshRegistry();
-    setToolName('');
-    setToolDesc('');
-    setToolParams([{ ...EMPTY_PARAM }]);
-    setShowToolForm(false);
-  };
-
-  const unregisterTool = (name: string) => {
-    ToolCalling.unregisterTool(name);
-    refreshRegistry();
-  };
+  }, [input, generating]);
 
   return (
     <div className="tab-panel tools-panel">
-      <ModelBanner
-        state={loader.state}
-        progress={loader.progress}
-        error={loader.error}
-        onLoad={loader.ensure}
-        label="LLM"
-      />
-
       <div className="tools-toolbar">
-        <button className={`btn btn-sm ${showRegistry ? 'btn-primary' : ''}`} onClick={() => { setShowRegistry(!showRegistry); setShowToolForm(false); }}>🔧 Tools ({registeredTools.length})</button>
-        <button className={`btn btn-sm ${showToolForm ? 'btn-primary' : ''}`} onClick={() => { setShowToolForm(!showToolForm); setShowRegistry(false); }}>+ Add Tool</button>
-        <label className="tools-toggle">
-          <input type="checkbox" checked={autoExecute} onChange={(e) => setAutoExecute(e.target.checked)} />
-          Auto-execute
-        </label>
+        <button
+          className={`btn btn-sm ${showRegistry ? 'btn-primary' : ''}`}
+          onClick={() => setShowRegistry(!showRegistry)}
+        >
+          🔧 Tools ({registeredTools.length})
+        </button>
       </div>
 
       {showRegistry && (
         <div className="tools-registry">
-          {registeredTools.map((t) => (
+          {registeredTools.map(t => (
             <div key={t.name} className="tool-card">
               <div className="tool-card-header">
                 <strong>{t.name}</strong>
-                <button className="btn btn-sm tool-remove" onClick={() => unregisterTool(t.name)}>×</button>
+                <span style={{ fontSize: '0.7rem', color: '#00eaff88' }}>{t.category}</span>
               </div>
               <p className="tool-card-desc">{t.description}</p>
             </div>
           ))}
-        </div>
-      )}
-
-      {showToolForm && (
-        <div className="tools-form">
-          <input className="tools-input" placeholder="Tool name" value={toolName} onChange={(e) => setToolName(e.target.value)} />
-          <input className="tools-input" placeholder="Description" value={toolDesc} onChange={(e) => setToolDesc(e.target.value)} />
-          <button className="btn btn-sm" onClick={addParam}>+ Param</button>
-          <button className="btn btn-primary btn-sm" onClick={registerCustomTool}>Register Tool</button>
         </div>
       )}
 
@@ -228,8 +171,16 @@ export function ToolsTab() {
       </div>
 
       <form className="chat-input" onSubmit={(e) => { e.preventDefault(); send(); }}>
-        <input type="text" placeholder="Ask something..." value={input} onChange={(e) => setInput(e.target.value)} disabled={generating} />
-        <button type="submit" className="btn btn-primary" disabled={!input.trim() || generating}>Send</button>
+        <input
+          type="text"
+          placeholder="Ask something... e.g. 'What's the weather in Mumbai?'"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={generating}
+        />
+        <button type="submit" className="btn btn-primary" disabled={!input.trim() || generating}>
+          {generating ? '...' : 'Send'}
+        </button>
       </form>
     </div>
   );

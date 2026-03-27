@@ -1,13 +1,4 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ModelCategory, VideoCapture } from '@runanywhere/web';
-import { VLMWorkerBridge } from '@runanywhere/web-llamacpp';
-import { useModelLoader } from '../hooks/useModelLoader';
-import { ModelBanner } from './ModelBanner';
-
-const LIVE_INTERVAL_MS = 2500;
-const LIVE_MAX_TOKENS = 30;
-const SINGLE_MAX_TOKENS = 80;
-const CAPTURE_DIM = 256; // CLIP resizes internally; larger is wasted work
 
 interface VisionResult {
   text: string;
@@ -15,195 +6,107 @@ interface VisionResult {
 }
 
 export function VisionTab() {
-  const loader = useModelLoader(ModelCategory.Multimodal);
   const [cameraActive, setCameraActive] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [liveMode, setLiveMode] = useState(false);
   const [result, setResult] = useState<VisionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState('Describe what you see briefly.');
 
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const videoMountRef = useRef<HTMLDivElement>(null);
-  const captureRef = useRef<VideoCapture | null>(null);
-  const processingRef = useRef(false);
-  const liveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const liveModeRef = useRef(false);
 
-  // Keep refs in sync with state so interval callbacks see latest values
-  processingRef.current = processing;
-  liveModeRef.current = liveMode;
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach(t => t.stop());
+    };
+  }, []);
 
-  // ------------------------------------------------------------------
-  // Camera
-  // ------------------------------------------------------------------
+  // ── Start Camera ──
   const startCamera = useCallback(async () => {
-    if (captureRef.current?.isCapturing) return;
-
     setError(null);
-
     try {
-      const cam = new VideoCapture({ facingMode: 'environment' });
-      await cam.start();
-      captureRef.current = cam;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      streamRef.current = stream;
 
-      const mount = videoMountRef.current;
-      if (mount) {
-        const el = cam.videoElement;
-        el.style.width = '100%';
-        el.style.borderRadius = '12px';
-        mount.appendChild(el);
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.style.width = '100%';
+      video.style.borderRadius = '12px';
+      videoRef.current = video;
+
+      if (videoMountRef.current) {
+        videoMountRef.current.innerHTML = '';
+        videoMountRef.current.appendChild(video);
       }
 
       setCameraActive(true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-
       if (msg.includes('NotAllowed') || msg.includes('Permission')) {
-        setError(
-          'Camera permission denied. On macOS, check System Settings → Privacy & Security → Camera and ensure your browser is allowed.',
-        );
-      } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+        setError('Camera permission denied. Please allow camera access in your browser.');
+      } else if (msg.includes('NotFound')) {
         setError('No camera found on this device.');
-      } else if (msg.includes('NotReadable') || msg.includes('TrackStartError')) {
-        setError('Camera is in use by another application.');
       } else {
         setError(`Camera error: ${msg}`);
       }
     }
   }, []);
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (liveIntervalRef.current) clearInterval(liveIntervalRef.current);
-      const cam = captureRef.current;
-      if (cam) {
-        cam.stop();
-        cam.videoElement.parentNode?.removeChild(cam.videoElement);
-        captureRef.current = null;
-      }
-    };
-  }, []);
-
-  // ------------------------------------------------------------------
-  // Core: capture + infer
-  // ------------------------------------------------------------------
-  const describeFrame = useCallback(async (maxTokens: number) => {
-    if (processingRef.current) return;
-
-    const cam = captureRef.current;
-    if (!cam?.isCapturing) return;
-
-    // Ensure model loaded
-    if (loader.state !== 'ready') {
-      const ok = await loader.ensure();
-      if (!ok) return;
-    }
-
-    const frame = cam.captureFrame(CAPTURE_DIM);
-    if (!frame) return;
-
-    setProcessing(true);
-    processingRef.current = true;
-    setError(null);
-
-    const t0 = performance.now();
-
-    try {
-      const bridge = VLMWorkerBridge.shared;
-      if (!bridge.isModelLoaded) {
-        throw new Error('VLM model not loaded in worker');
-      }
-
-      const res = await bridge.process(
-        frame.rgbPixels,
-        frame.width,
-        frame.height,
-        prompt,
-        { maxTokens, temperature: 0.6 },
-      );
-
-      setResult({ text: res.text, totalMs: performance.now() - t0 });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      const isWasmCrash = msg.includes('memory access out of bounds')
-        || msg.includes('RuntimeError');
-
-      if (isWasmCrash) {
-        setResult({ text: 'Recovering from memory error... next frame will retry.', totalMs: 0 });
-      } else {
-        setError(msg);
-        if (liveModeRef.current) stopLive();
-      }
-    } finally {
-      setProcessing(false);
-      processingRef.current = false;
-    }
-  }, [loader, prompt]);
-
-  // ------------------------------------------------------------------
-  // Single-shot
-  // ------------------------------------------------------------------
-  const describeSingle = useCallback(async () => {
-    if (!captureRef.current?.isCapturing) {
+  // ── Capture Frame + Send to NOVA backend ──
+  const describeFrame = useCallback(async () => {
+    const video = videoRef.current;
+    if (!video || !cameraActive) {
       await startCamera();
       return;
     }
-    await describeFrame(SINGLE_MAX_TOKENS);
-  }, [startCamera, describeFrame]);
 
-  // ------------------------------------------------------------------
-  // Live mode
-  // ------------------------------------------------------------------
-  const startLive = useCallback(async () => {
-    if (!captureRef.current?.isCapturing) {
-      await startCamera();
-    }
+    setProcessing(true);
+    setError(null);
+    const t0 = performance.now();
 
-    setLiveMode(true);
-    liveModeRef.current = true;
+    try {
+      // Capture frame from video
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(video, 0, 0, 512, 512);
+      const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
 
-    // Immediately describe first frame
-    describeFrame(LIVE_MAX_TOKENS);
+      // Send to NOVA backend
+      const res = await fetch('http://localhost:5000/api/vision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image, prompt }),
+      });
 
-    // Then poll every 2.5s — skips ticks while inference is running
-    liveIntervalRef.current = setInterval(() => {
-      if (!processingRef.current && liveModeRef.current) {
-        describeFrame(LIVE_MAX_TOKENS);
+      if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+
+      const data = await res.json();
+      setResult({ text: data.result || data.text || 'No description available.', totalMs: performance.now() - t0 });
+
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Vision API not implemented yet — show helpful message
+      if (msg.includes('404') || msg.includes('Backend error')) {
+        setResult({
+          text: 'Vision API coming soon! The camera is working — backend vision endpoint needs to be added to app.py.',
+          totalMs: performance.now() - t0
+        });
+      } else {
+        setError(msg);
       }
-    }, LIVE_INTERVAL_MS);
-  }, [startCamera, describeFrame]);
-
-  const stopLive = useCallback(() => {
-    setLiveMode(false);
-    liveModeRef.current = false;
-    if (liveIntervalRef.current) {
-      clearInterval(liveIntervalRef.current);
-      liveIntervalRef.current = null;
+    } finally {
+      setProcessing(false);
     }
-  }, []);
+  }, [cameraActive, prompt, startCamera]);
 
-  const toggleLive = useCallback(() => {
-    if (liveMode) {
-      stopLive();
-    } else {
-      startLive();
-    }
-  }, [liveMode, startLive, stopLive]);
-
-  // ------------------------------------------------------------------
-  // Render
-  // ------------------------------------------------------------------
   return (
     <div className="tab-panel vision-panel">
-      <ModelBanner
-        state={loader.state}
-        progress={loader.progress}
-        error={loader.error}
-        onLoad={loader.ensure}
-        label="VLM"
-      />
-
       <div className="vision-camera">
         {!cameraActive && (
           <div className="empty-state">
@@ -220,29 +123,22 @@ export function VisionTab() {
         placeholder="What do you want to know about the image?"
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
-        disabled={liveMode}
+        disabled={processing}
       />
 
       <div className="vision-actions">
         {!cameraActive ? (
-          <button className="btn btn-primary" onClick={startCamera}>Start Camera</button>
+          <button className="btn btn-primary" onClick={startCamera}>
+            Start Camera
+          </button>
         ) : (
-          <>
-            <button
-              className="btn btn-primary"
-              onClick={describeSingle}
-              disabled={processing || liveMode}
-            >
-              {processing && !liveMode ? 'Analyzing...' : 'Describe'}
-            </button>
-            <button
-              className={`btn ${liveMode ? 'btn-live-active' : ''}`}
-              onClick={toggleLive}
-              disabled={processing && !liveMode}
-            >
-              {liveMode ? '⏹ Stop Live' : '▶ Live'}
-            </button>
-          </>
+          <button
+            className="btn btn-primary"
+            onClick={describeFrame}
+            disabled={processing}
+          >
+            {processing ? 'Analyzing...' : 'Describe'}
+          </button>
         )}
       </div>
 
@@ -254,7 +150,6 @@ export function VisionTab() {
 
       {result && (
         <div className="vision-result">
-          {liveMode && <span className="live-badge">LIVE</span>}
           <h4>Result</h4>
           <p>{result.text}</p>
           {result.totalMs > 0 && (

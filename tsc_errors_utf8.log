@@ -1,0 +1,2 @@
+﻿src/components/NovaInterface.tsx(771,61): error TS2774: This condition will always return true since this function is always defined. Did you mean to call it instead?
+src/services/demo_tools/wheather.ts(11,20): error TS7006: Parameter 'args' implicitly has an 'any' type.

@@ -8,7 +8,7 @@ export const weatherTool = {
     ],
     category: 'Utility',
   },
-  executor: async (args) => {
+  executor: async (args: any) => {
     // In a real app, you would fetch from an API like OpenWeather here
     // For now, we use the logic from your original ToolsTab
     const city = args.location ?? 'Unknown';

@@ -8,9 +8,11 @@ import webbrowser
 import psutil
 import pyautogui
 import platform
+import subprocess
 import threading
 import time
 import re
+import requests
 from datetime import datetime
 from pathlib import Path
 from pynput.keyboard import Controller, Key
@@ -37,54 +39,149 @@ client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 system_platform = platform.system()
 keyboard = Controller()
 
-# Typing mode state
 typing_mode = False
 
-SYSTEM_PROMPT = "You are NOVA, an advanced AI assistant with a sleek futuristic personality. Be helpful, concise, and slightly futuristic in tone."
+SYSTEM_PROMPT = (
+    "You are NOVA, a friendly and warm AI companion. "
+    "Talk like a close friend — casual, fun, and supportive. "
+    "Keep responses short and natural. "
+    "Never use markdown formatting like **, *, #, or backticks. "
+    "Never use emojis. Write in plain text only."
+)
+
+# ─────────────────────────────────────────
+# OLLAMA CONFIG
+# ─────────────────────────────────────────
+
+OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_MODEL = "gemma3:1b"
+
+def is_ollama_running():
+    try:
+        r = requests.get("http://localhost:11434", timeout=2)
+        return r.status_code == 200
+    except:
+        return False
+
+# ─────────────────────────────────────────
+# CACHE SYSTEM
+# ─────────────────────────────────────────
+
+CACHE_FILE = Path("cache.json")
+
+def load_cache():
+    if CACHE_FILE.exists():
+        with open(CACHE_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_cache(cache):
+    with open(CACHE_FILE, "w") as f:
+        json.dump(cache, f, indent=2)
+
+def normalize(text):
+    return re.sub(r'\s+', ' ', text.lower().strip())
+
+def get_cached_response(prompt):
+    cache = load_cache()
+    key = normalize(prompt)
+    return cache.get(key, None)
+
+def save_to_cache(prompt, response):
+    cache = load_cache()
+    key = normalize(prompt)
+    cache[key] = {
+        "response": response,
+        "timestamp": datetime.now().strftime("%d %b %Y, %H:%M")
+    }
+    if len(cache) > 200:
+        oldest_key = list(cache.keys())[0]
+        del cache[oldest_key]
+    save_cache(cache)
+
+# ─────────────────────────────────────────
+# SMART AI ROUTER
+# Priority: Cache → Ollama Local → Groq API
+# ─────────────────────────────────────────
+
+def stream_ollama(messages):
+    payload = {"model": OLLAMA_MODEL, "messages": messages, "stream": True}
+    with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=60) as r:
+        for line in r.iter_lines():
+            if line:
+                data = json.loads(line)
+                delta = data.get("message", {}).get("content", "")
+                if delta:
+                    yield delta
+                if data.get("done"):
+                    break
+
+def stream_groq(messages):
+    stream = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        max_tokens=1024,
+        stream=True,
+        messages=messages
+    )
+    for chunk in stream:
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
+
+def smart_stream(messages, user_prompt):
+    # ── STEP 1: Cache ──
+    cached = get_cached_response(user_prompt)
+    if cached:
+        print("[NOVA] Cache hit ⚡")
+        yield cached["response"]
+        return
+
+    # ── STEP 2: Ollama local ──
+    if is_ollama_running():
+        print("[NOVA] Using Ollama local 🦙")
+        full_response = ""
+        try:
+            for chunk in stream_ollama(messages):
+                full_response += chunk
+                yield chunk
+            save_to_cache(user_prompt, full_response)
+            return
+        except Exception as e:
+            print(f"[NOVA] Ollama failed: {e} → falling back to Groq")
+
+    # ── STEP 3: Groq fallback ──
+    print("[NOVA] Using Groq fallback 🌐")
+    full_response = ""
+    try:
+        for chunk in stream_groq(messages):
+            full_response += chunk
+            yield chunk
+        save_to_cache(user_prompt, full_response)
+    except Exception as e:
+        yield f"ERROR: {str(e)}"
 
 # ─────────────────────────────────────────
 # KEY MAPPING
 # ─────────────────────────────────────────
 
 KEY_MAP = {
-    "windows": Key.cmd,
-    "win": Key.cmd,
-    "ctrl": Key.ctrl,
-    "control": Key.ctrl,
-    "alt": Key.alt,
-    "shift": Key.shift,
-    "enter": Key.enter,
-    "return": Key.enter,
-    "escape": Key.esc,
-    "esc": Key.esc,
-    "tab": Key.tab,
-    "space": Key.space,
-    "backspace": Key.backspace,
-    "delete": Key.delete,
-    "up": Key.up,
-    "down": Key.down,
-    "left": Key.left,
-    "right": Key.right,
-    "home": Key.home,
-    "end": Key.end,
-    "f1": Key.f1,
-    "f2": Key.f2,
-    "f3": Key.f3,
-    "f4": Key.f4,
-    "f5": Key.f5,
-    "f6": Key.f6,
-    "f7": Key.f7,
-    "f8": Key.f8,
-    "f9": Key.f9,
-    "f10": Key.f10,
-    "f11": Key.f11,
-    "f12": Key.f12,
-    "page up": Key.page_up,
-    "page down": Key.page_down,
-    "caps lock": Key.caps_lock,
-    "print screen": Key.print_screen,
-    "insert": Key.insert,
-    "num lock": Key.num_lock,
+    "windows": Key.cmd, "win": Key.cmd,
+    "ctrl": Key.ctrl, "control": Key.ctrl,
+    "alt": Key.alt, "shift": Key.shift,
+    "enter": Key.enter, "return": Key.enter,
+    "escape": Key.esc, "esc": Key.esc,
+    "tab": Key.tab, "space": Key.space,
+    "backspace": Key.backspace, "delete": Key.delete,
+    "up": Key.up, "down": Key.down,
+    "left": Key.left, "right": Key.right,
+    "home": Key.home, "end": Key.end,
+    "f1": Key.f1, "f2": Key.f2, "f3": Key.f3,
+    "f4": Key.f4, "f5": Key.f5, "f6": Key.f6,
+    "f7": Key.f7, "f8": Key.f8, "f9": Key.f9,
+    "f10": Key.f10, "f11": Key.f11, "f12": Key.f12,
+    "page up": Key.page_up, "page down": Key.page_down,
+    "caps lock": Key.caps_lock, "print screen": Key.print_screen,
+    "insert": Key.insert, "num lock": Key.num_lock,
 }
 
 # ─────────────────────────────────────────
@@ -113,7 +210,6 @@ def add_memory():
     text = data.get("text", "").strip()
     if not text:
         return jsonify({"error": "Empty memory"}), 400
-
     memories = load_memories()
     memory = {
         "id": str(int(time.time() * 1000)),
@@ -122,7 +218,7 @@ def add_memory():
         "category": data.get("category", "general")
     }
     memories.insert(0, memory)
-    memories = memories[:50]  # keep last 50 only
+    memories = memories[:50]
     save_memories(memories)
     return jsonify({"status": "Memory saved", "memory": memory})
 
@@ -148,56 +244,60 @@ def clear_memories():
 def handle_task():
     data = request.json
     user_prompt = data.get("prompt", "")
-
-    def generate():
-        stream = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            max_tokens=1024,
-            stream=True,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ]
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield delta
-
-    return Response(stream_with_context(generate()), mimetype='text/plain')
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt}
+    ]
+    return Response(
+        stream_with_context(smart_stream(messages, user_prompt)),
+        mimetype='text/plain'
+    )
 
 @app.route('/api/chat', methods=['POST'])
 def handle_chat():
     data = request.json
     messages = data.get("messages", [])
 
-    # Inject memories into system prompt so NOVA always knows user context
     memories = load_memories()
     memory_context = ""
     if memories:
         memory_context = "\n\nUser memories (use these to personalize your responses):\n"
         memory_context += "\n".join([f"- {m['text']}" for m in memories])
 
-    def generate():
-        stream = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            max_tokens=1024,
-            stream=True,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT + memory_context},
-                *messages
-            ]
-        )
-        for chunk in stream:
-            delta = chunk.choices[0].delta.content
-            if delta:
-                yield delta
+    full_messages = [
+        {"role": "system", "content": SYSTEM_PROMPT + memory_context},
+        *messages
+    ]
 
-    return Response(stream_with_context(generate()), mimetype='text/plain')
+    user_prompt = messages[-1]["content"] if messages else ""
+
+    return Response(
+        stream_with_context(smart_stream(full_messages, user_prompt)),
+        mimetype='text/plain'
+    )
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({"status": "NOVA backend online ⚡"})
+    ollama_status = "online 🦙" if is_ollama_running() else "offline ❌"
+    return jsonify({
+        "status": "NOVA backend online ⚡",
+        "ollama": ollama_status,
+        "model": OLLAMA_MODEL
+    })
+
+# ─────────────────────────────────────────
+# CACHE ROUTES
+# ─────────────────────────────────────────
+
+@app.route('/api/cache/stats', methods=['GET'])
+def cache_stats():
+    cache = load_cache()
+    return jsonify({"total_entries": len(cache), "status": "Cache active ⚡"})
+
+@app.route('/api/cache/clear', methods=['POST'])
+def clear_cache():
+    save_cache({})
+    return jsonify({"status": "Cache cleared"})
 
 # ─────────────────────────────────────────
 # VOLUME CONTROL
@@ -208,11 +308,11 @@ def control_volume_action(action, percent=None):
         if action == "increase":
             presses = int((percent or 15) / 2)
             for _ in range(presses): pyautogui.press("volumeup")
-            return jsonify({"status": f"Volume increased", "speak": "Volume increased."})
+            return jsonify({"status": "Volume increased", "speak": "Volume increased."})
         elif action == "decrease":
             presses = int((percent or 15) / 2)
             for _ in range(presses): pyautogui.press("volumedown")
-            return jsonify({"status": f"Volume decreased", "speak": "Volume decreased."})
+            return jsonify({"status": "Volume decreased", "speak": "Volume decreased."})
         elif action == "mute":
             pyautogui.press("volumemute")
             return jsonify({"status": "Muted", "speak": "Muted."})
@@ -224,38 +324,24 @@ def control_volume_action(action, percent=None):
     try:
         curr = volume_iface.GetMasterVolumeLevelScalar()
         curr_pct = int(curr * 100)
-
         if action == "increase":
             change = (percent or 15) / 100
             new_vol = min(curr + change, 1.0)
             volume_iface.SetMasterVolumeLevelScalar(new_vol, None)
-            return jsonify({
-                "status": f"Volume increased to {int(new_vol * 100)}%",
-                "speak": f"Volume increased to {int(new_vol * 100)} percent."
-            })
+            return jsonify({"status": f"Volume up to {int(new_vol*100)}%", "speak": f"Volume increased to {int(new_vol*100)} percent."})
         elif action == "decrease":
             change = (percent or 15) / 100
             new_vol = max(curr - change, 0.0)
             volume_iface.SetMasterVolumeLevelScalar(new_vol, None)
-            return jsonify({
-                "status": f"Volume decreased to {int(new_vol * 100)}%",
-                "speak": f"Volume decreased to {int(new_vol * 100)} percent."
-            })
+            return jsonify({"status": f"Volume down to {int(new_vol*100)}%", "speak": f"Volume decreased to {int(new_vol*100)} percent."})
         elif action == "mute":
             pyautogui.press("volumemute")
             return jsonify({"status": "Muted", "speak": "Audio muted."})
         elif action == "set" and percent is not None:
             volume_iface.SetMasterVolumeLevelScalar(percent / 100, None)
-            return jsonify({
-                "status": f"Volume set to {percent}%",
-                "speak": f"Volume set to {percent} percent."
-            })
+            return jsonify({"status": f"Volume set to {percent}%", "speak": f"Volume set to {percent} percent."})
         elif action == "get":
-            return jsonify({
-                "status": f"Volume is at {curr_pct}%",
-                "speak": f"Current volume is {curr_pct} percent.",
-                "level": curr_pct
-            })
+            return jsonify({"status": f"Volume is at {curr_pct}%", "speak": f"Current volume is {curr_pct} percent.", "level": curr_pct})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -267,6 +353,95 @@ def control_volume():
     return control_volume_action(action, percent)
 
 # ─────────────────────────────────────────
+# WINDOW CONTROL
+# ─────────────────────────────────────────
+
+def close_active_window():
+    """Close the currently active/foreground window."""
+    try:
+        if system_platform == "Windows":
+            pyautogui.hotkey('alt', 'F4')
+        elif system_platform == "Darwin":
+            pyautogui.hotkey('command', 'w')
+        else:
+            pyautogui.hotkey('alt', 'F4')
+        return True
+    except Exception as e:
+        print(f"[NOVA] Close window error: {e}")
+        return False
+
+def minimize_active_window():
+    """Minimize the currently active/foreground window."""
+    try:
+        if system_platform == "Windows":
+            pyautogui.hotkey('win', 'down')
+        elif system_platform == "Darwin":
+            pyautogui.hotkey('command', 'm')
+        else:
+            pyautogui.hotkey('super', 'h')
+        return True
+    except Exception as e:
+        print(f"[NOVA] Minimize window error: {e}")
+        return False
+
+def close_app_by_name(app_name: str):
+    """Try to find and kill a process by name."""
+    name_lower = app_name.lower().strip()
+    killed = []
+    for proc in psutil.process_iter(['name', 'pid']):
+        try:
+            pname = proc.info['name'].lower()
+            if name_lower in pname or pname in name_lower:
+                proc.kill()
+                killed.append(proc.info['name'])
+        except Exception:
+            pass
+    return killed
+
+@app.route('/api/window', methods=['POST'])
+def window_control():
+    data = request.json
+    action = data.get("action", "")
+    app_name = data.get("app", "")
+    if action == "close":
+        if app_name:
+            killed = close_app_by_name(app_name)
+            if killed:
+                return jsonify({"status": f"Closed {', '.join(killed)}", "speak": f"Closed {app_name}."})
+            return jsonify({"status": "App not found", "speak": f"Could not find {app_name} to close."})
+        close_active_window()
+        return jsonify({"status": "Window closed", "speak": "Window closed."})
+    elif action == "minimize":
+        minimize_active_window()
+        return jsonify({"status": "Window minimized", "speak": "Window minimized."})
+    return jsonify({"error": "Unknown action"}), 400
+
+# ─────────────────────────────────────────
+# YOUTUBE OPEN / PLAY
+# ─────────────────────────────────────────
+
+@app.route('/api/youtube', methods=['POST'])
+def youtube_control():
+    data = request.json
+    action = data.get("action", "")
+    query = data.get("query", "")
+
+    if action == "open":
+        webbrowser.open("https://www.youtube.com")
+        return jsonify({"status": "YouTube opened", "speak": "Opening YouTube now."})
+
+    if action == "play" and query:
+        # Use the video filter (&sp=EgIQAQ) to show only videos
+        search_url = f"https://www.youtube.com/results?search_query={requests.utils.quote(query)}&sp=EgIQAQ%253D%253D"
+        webbrowser.open(search_url)
+        return jsonify({
+            "status": f"Playing {query} on YouTube",
+            "speak": f"Playing {query} on YouTube now!"
+        })
+
+    return jsonify({"error": "Missing action or query"}), 400
+
+# ─────────────────────────────────────────
 # TYPING CONTROL
 # ─────────────────────────────────────────
 
@@ -275,14 +450,10 @@ def type_text():
     data = request.json
     text = data.get("text", "")
     delay = data.get("delay", 0.05)
-
     try:
-        time.sleep(0.5)  # small delay so user can focus window
+        time.sleep(0.5)
         pyautogui.typewrite(text, interval=delay)
-        return jsonify({
-            "status": f"Typed: {text}",
-            "speak": f"Done. I typed: {text}"
-        })
+        return jsonify({"status": f"Typed: {text}", "speak": f"Done. I typed: {text}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -294,7 +465,6 @@ def type_text():
 def press_shortcut():
     data = request.json
     keys = data.get("keys", [])
-
     try:
         mapped = []
         for k in keys:
@@ -305,7 +475,6 @@ def press_shortcut():
                 mapped.append(k)
             else:
                 mapped.append(k)
-
         if len(mapped) == 1:
             pyautogui.press(str(mapped[0]).replace("Key.", ""))
         else:
@@ -314,12 +483,8 @@ def press_shortcut():
                 if not isinstance(k, str) else k
                 for k in mapped
             ])
-
         key_str = " + ".join(keys)
-        return jsonify({
-            "status": f"Pressed {key_str}",
-            "speak": f"Pressed {key_str}."
-        })
+        return jsonify({"status": f"Pressed {key_str}", "speak": f"Pressed {key_str}."})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -359,21 +524,19 @@ def get_alarms():
     return jsonify({"alarms": alarms})
 
 # ─────────────────────────────────────────
-# SHUTDOWN
+# SHUTDOWN / RESTART
 # ─────────────────────────────────────────
 
 @app.route('/api/shutdown', methods=['POST'])
 def shutdown():
     data = request.json
     delay = data.get("delay", 10)
-
     def do_shutdown():
         time.sleep(2)
         if system_platform == "Windows":
             os.system(f"shutdown /s /t {delay}")
         else:
             os.system("shutdown -h now")
-
     threading.Thread(target=do_shutdown, daemon=True).start()
     return jsonify({"status": f"Shutting down in {delay} seconds"})
 
@@ -393,7 +556,6 @@ def mouse_control():
     action = data.get("action", "")
     x = data.get("x", None)
     y = data.get("y", None)
-
     try:
         if action == "move" and x is not None and y is not None:
             pyautogui.moveTo(int(x), int(y), duration=0.3)
@@ -419,7 +581,6 @@ def mouse_control():
             return jsonify({"status": "Scrolled down"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
     return jsonify({"error": "Unknown action"}), 400
 
 # ─────────────────────────────────────────
@@ -427,19 +588,12 @@ def mouse_control():
 # ─────────────────────────────────────────
 
 def parse_percent(command):
-    """Extract percentage from command e.g. 'decrease volume 30 percent' → 30"""
     match = re.search(r'(\d+)\s*(?:percent|%)', command)
     return int(match.group(1)) if match else None
 
 def parse_shortcut_from_command(command):
-    """
-    Parse shortcut keys from natural language
-    e.g. 'press ctrl c' → ['ctrl', 'c']
-    e.g. 'press windows plus alt f4' → ['win', 'alt', 'f4']
-    """
     clean = command.replace("press", "").replace("hit", "").replace("shortcut", "")
     clean = clean.replace(" plus ", " ").replace("+", " ").strip()
-
     words = clean.split()
     keys = []
     i = 0
@@ -454,14 +608,24 @@ def parse_shortcut_from_command(command):
         if word in KEY_MAP or len(word) == 1:
             keys.append(word)
         i += 1
-
     return keys if keys else None
+
+def extract_app_name(command: str, keyword: str) -> str:
+    """Extract app name after a keyword like 'close' or 'open'."""
+    idx = command.find(keyword)
+    if idx == -1:
+        return ""
+    after = command[idx + len(keyword):].strip()
+    # Remove filler words
+    for filler in ["the", "app", "application", "window", "tab"]:
+        after = after.replace(filler, "").strip()
+    return after.strip()
 
 @app.route('/api/command', methods=['POST'])
 def parse_command():
     global typing_mode
     data = request.json
-    command = data.get("command", "").lower()
+    command = data.get("command", "").lower().strip()
 
     # ── Memory Commands ──
     if command.startswith("remember ") or command.startswith("nova remember "):
@@ -476,40 +640,117 @@ def parse_command():
         memories.insert(0, memory)
         memories = memories[:50]
         save_memories(memories)
-        return jsonify({
-            "status": f"Memory saved: {mem_text}",
-            "speak": f"Got it. I'll remember that {mem_text}."
-        })
+        return jsonify({"status": f"Memory saved: {mem_text}", "speak": f"Got it. I'll remember that {mem_text}."})
 
     if "what do you remember" in command or "show memories" in command:
         memories = load_memories()
         count = len(memories)
-        return jsonify({
-            "status": f"{count} memories stored",
-            "speak": f"I have {count} memories stored. Check the memory panel on the left."
-        })
+        return jsonify({"status": f"{count} memories stored", "speak": f"I have {count} memories stored."})
 
     if "clear memories" in command or "forget everything" in command:
         save_memories([])
-        return jsonify({
-            "status": "All memories cleared",
-            "speak": "All memories have been cleared."
-        })
+        return jsonify({"status": "All memories cleared", "speak": "All memories have been cleared."})
+
+    # ── YouTube Commands ──
+    if command == "open youtube" or (
+        "open youtube" in command and "play" not in command
+    ):
+        webbrowser.open("https://www.youtube.com")
+        return jsonify({"status": "YouTube opened", "speak": "Opening YouTube now."})
+
+    # Play YouTube: extract video name if provided inline e.g. "play believer on youtube"
+    if any(p in command for p in ["play youtube", "play on youtube", "play music", "play a song", "play a video", "search youtube"]):
+        # Try to extract video name from command
+        for trigger in ["play youtube", "play on youtube", "search youtube", "play music", "play a song", "play a video"]:
+            if trigger in command:
+                after = command.replace(trigger, "").replace("play", "").strip()
+                # Remove prepositions
+                for filler in ["on youtube", "youtube", "the song", "the video", "a song called", "called"]:
+                    after = after.replace(filler, "").strip()
+                if after and len(after) > 2:
+                    # We have the song name, play directly
+                    search_url = f"https://www.youtube.com/results?search_query={requests.utils.quote(after)}&sp=EgIQAQ%253D%253D"
+                    webbrowser.open(search_url)
+                    return jsonify({
+                        "status": f"Playing {after} on YouTube",
+                        "speak": f"Playing {after} on YouTube now!",
+                        "action": "youtube_play"
+                    })
+                else:
+                    # No song name: ask the user
+                    return jsonify({
+                        "status": "waiting_for_video",
+                        "speak": "Okay! Tell me the name of the song or video you want to hear.",
+                        "action": "ask_video_name"
+                    })
+
+    # ── Close Window / App ──
+    if any(w in command for w in ["close this window", "close the window", "close window", "close app", "close application", "close this tab"]):
+        # Check if a specific app is named
+        app_name = ""
+        for trigger in ["close app", "close application", "close the app", "close"]:
+            if trigger in command:
+                potential = extract_app_name(command, trigger)
+                if potential and potential not in ["this", "window", "tab", ""]:
+                    app_name = potential
+                    break
+
+        if app_name:
+            killed = close_app_by_name(app_name)
+            if killed:
+                return jsonify({"status": f"Closed {app_name}", "speak": f"Closed {app_name}."})
+            return jsonify({"status": f"App not found: {app_name}", "speak": f"I couldn't find {app_name} running."})
+        else:
+            time.sleep(0.3)
+            close_active_window()
+            return jsonify({"status": "Window closed", "speak": "Closing this window now."})
+
+    # ── Minimize Window ──
+    if "minimize" in command or "minimise" in command:
+        time.sleep(0.3)
+        minimize_active_window()
+        return jsonify({"status": "Window minimized", "speak": "Window minimized."})
+
+    # ── Open specific apps ──
+    APP_URLS = {
+        "google": "https://google.com",
+        "github": "https://github.com",
+        "gmail": "https://mail.google.com",
+        "twitter": "https://twitter.com",
+        "reddit": "https://reddit.com",
+        "netflix": "https://netflix.com",
+        "spotify": "https://open.spotify.com",
+        "chatgpt": "https://chat.openai.com",
+        "instagram": "https://instagram.com",
+        "whatsapp": "https://web.whatsapp.com",
+        "linkedin": "https://linkedin.com",
+    }
+
+    if command.startswith("open "):
+        target = command.replace("open ", "").strip()
+        if target in APP_URLS:
+            webbrowser.open(APP_URLS[target])
+            return jsonify({"status": f"Opened {target}", "speak": f"Opening {target} now."})
+        # Try as executable / desktop app
+        try:
+            if system_platform == "Windows":
+                os.startfile(target)
+            elif system_platform == "Darwin":
+                subprocess.Popen(["open", "-a", target])
+            else:
+                subprocess.Popen([target])
+            return jsonify({"status": f"Opened {target}", "speak": f"Opening {target}."})
+        except Exception as e:
+            return jsonify({"status": f"Could not open {target}", "speak": f"I couldn't open {target}. It might not be installed."})
 
     # ── Typing Mode ──
     if any(w in command for w in ["start writing", "start typing", "type for me", "nova type", "nova write"]):
         typing_mode = True
-        return jsonify({
-            "status": "Typing mode ON",
-            "speak": "Typing mode activated. Tell me what to type."
-        })
+        return jsonify({"status": "Typing mode ON", "speak": "Typing mode activated."})
 
     if any(w in command for w in ["stop writing", "stop typing", "stop type"]):
         typing_mode = False
-        return jsonify({
-            "status": "Typing mode OFF",
-            "speak": "Typing mode deactivated."
-        })
+        return jsonify({"status": "Typing mode OFF", "speak": "Typing mode deactivated."})
 
     if typing_mode or command.startswith("type ") or command.startswith("write "):
         text = command
@@ -519,10 +760,7 @@ def parse_command():
                 break
         time.sleep(0.5)
         pyautogui.typewrite(text, interval=0.04)
-        return jsonify({
-            "status": f"Typed: {text}",
-            "speak": f"Typed: {text}"
-        })
+        return jsonify({"status": f"Typed: {text}", "speak": f"Typed: {text}"})
 
     # ── Shortcut Keys ──
     if command.startswith("press ") or "shortcut" in command or " plus " in command:
@@ -531,54 +769,74 @@ def parse_command():
             try:
                 pyautogui.hotkey(*keys)
                 key_str = " + ".join(keys)
-                return jsonify({
-                    "status": f"Pressed {key_str}",
-                    "speak": f"Pressed {key_str}."
-                })
+                return jsonify({"status": f"Pressed {key_str}", "speak": f"Pressed {key_str}."})
             except Exception as e:
                 return jsonify({"error": str(e), "speak": "Could not execute that shortcut."}), 500
 
     # ── Volume ──
     percent = parse_percent(command)
-    if any(w in command for w in ["increase volume", "volume up", "louder"]):
+    if any(w in command for w in ["increase volume", "volume up", "louder", "turn up", "inc volume"]):
         return control_volume_action("increase", percent)
-    elif any(w in command for w in ["decrease volume", "volume down", "quieter", "lower volume"]):
+    elif any(w in command for w in ["decrease volume", "volume down", "quieter", "lower volume", "turn down", "dec volume"]):
         return control_volume_action("decrease", percent)
     elif any(w in command for w in ["set volume", "volume to"]):
         return control_volume_action("set", percent)
     elif "what is the volume" in command or "current volume" in command:
         return control_volume_action("get")
-    elif "mute" in command:
-        return control_volume_action("mute")
     elif "unmute" in command:
         pyautogui.press("volumemute")
         return jsonify({"status": "Unmuted", "speak": "Audio unmuted."})
+    elif "mute" in command:
+        return control_volume_action("mute")
 
-    # ── Shutdown ──
-    elif "shutdown" in command or "shut down" in command:
-        threading.Thread(
-            target=lambda: (time.sleep(2), os.system("shutdown /s /t 10")),
-            daemon=True
-        ).start()
-        return jsonify({
-            "status": "Shutting down in 10 seconds",
-            "speak": "Shutting down your PC in 10 seconds."
-        })
+    # ── Brightness ──
+    elif any(w in command for w in ["increase brightness", "brightness up", "brighter", "inc brightness"]):
+        try:
+            result = subprocess.run(
+                ['powershell', '-Command',
+                 '(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, [Math]::Min(100, (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightness).CurrentBrightness + 20))'],
+                capture_output=True, text=True, timeout=5
+            )
+            return jsonify({"status": "Brightness increased", "speak": "Brightness increased."})
+        except:
+            # Fallback: use keyboard
+            for _ in range(4): pyautogui.hotkey('fn', 'f12') if system_platform != "Windows" else None
+            return jsonify({"status": "Brightness increased", "speak": "Brightness increased."})
+
+    elif any(w in command for w in ["decrease brightness", "brightness down", "dimmer", "dec brightness"]):
+        try:
+            result = subprocess.run(
+                ['powershell', '-Command',
+                 '(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, [Math]::Max(0, (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightness).CurrentBrightness - 20))'],
+                capture_output=True, text=True, timeout=5
+            )
+            return jsonify({"status": "Brightness decreased", "speak": "Brightness decreased."})
+        except:
+            return jsonify({"status": "Brightness decreased", "speak": "Brightness decreased."})
+
+    elif "set brightness" in command:
+        pct = parse_percent(command)
+        if pct is not None:
+            try:
+                subprocess.run(
+                    ['powershell', '-Command',
+                     f'(Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1, {pct})'],
+                    capture_output=True, text=True, timeout=5
+                )
+                return jsonify({"status": f"Brightness set to {pct}%", "speak": f"Brightness set to {pct} percent."})
+            except:
+                return jsonify({"status": "Could not set brightness", "speak": "Could not set brightness."})
+
+    # ── Shutdown / Restart ──
     elif "cancel shutdown" in command:
         os.system("shutdown /a")
-        return jsonify({
-            "status": "Shutdown cancelled",
-            "speak": "Shutdown cancelled."
-        })
+        return jsonify({"status": "Shutdown cancelled", "speak": "Shutdown cancelled."})
+    elif "shutdown" in command or "shut down" in command:
+        threading.Thread(target=lambda: (time.sleep(2), os.system("shutdown /s /t 10")), daemon=True).start()
+        return jsonify({"status": "Shutting down in 10 seconds", "speak": "Shutting down your PC in 10 seconds."})
     elif "restart" in command or "reboot" in command:
-        threading.Thread(
-            target=lambda: (time.sleep(2), os.system("shutdown /r /t 10")),
-            daemon=True
-        ).start()
-        return jsonify({
-            "status": "Restarting in 10 seconds",
-            "speak": "Restarting your PC in 10 seconds."
-        })
+        threading.Thread(target=lambda: (time.sleep(2), os.system("shutdown /r /t 10")), daemon=True).start()
+        return jsonify({"status": "Restarting in 10 seconds", "speak": "Restarting your PC in 10 seconds."})
 
     # ── Mouse ──
     elif any(w in command for w in ["move mouse", "center mouse"]):
@@ -610,20 +868,17 @@ def parse_command():
                     datetime.strptime(word, "%H:%M")
                     alarms.append(word)
                     threading.Thread(target=alarm_thread, args=(word,), daemon=True).start()
-                    return jsonify({
-                        "status": f"Alarm set for {word}",
-                        "speak": f"Alarm set for {word}."
-                    })
+                    return jsonify({"status": f"Alarm set for {word}", "speak": f"Alarm set for {word}."})
                 except:
                     pass
-        return jsonify({
-            "status": "Could not parse alarm time",
-            "speak": "Please say the time in H H colon M M format."
-        })
+        return jsonify({"status": "Could not parse alarm time", "speak": "Please say the time in HH:MM format."})
 
-    # ── Not a system command ──
     return jsonify({"status": "not_a_command"})
 
 
 if __name__ == '__main__':
+    print("⚡ NOVA Backend Starting...")
+    print(f"🦙 Ollama status: {'online' if is_ollama_running() else 'offline'}")
+    print(f"🧠 Model: {OLLAMA_MODEL}")
+    print(f"💾 Cache: {len(load_cache())} entries loaded")
     app.run(port=5000, debug=True)
