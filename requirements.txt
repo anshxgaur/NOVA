@@ -1,0 +1,14 @@
+flask==2.3.0
+flask-cors==4.0.0
+python-dotenv==1.0.0
+groq==0.4.1
+pyautogui==0.9.53
+pynput==1.7.6
+psutil==5.9.5
+spotipy==2.22.1
+comtypes==1.1.14
+pycaw==20240106
+requests==2.31.0
+spotipy==2.22.1
+comtypes==1.1.14  # Windows only
+pycaw==20240106   # Windows audio control
