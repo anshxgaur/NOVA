@@ -216,6 +216,33 @@ sequenceDiagram
   <img align="right" src="https://img.icons8.com/material-outlined/24/ffffff/github.png" alt="GitHub Icon">
 </a>
 
+<summary><b>⚙️ How to Run NOVA</b></summary>
+
+```bash
+# 1. Clone Repo
+git clone https://github.com/AnshGaur/NOVA.git
+cd NOVA
+
+# 2. Create Virtual Environment
+python -m venv venv
+
+# Activate Environment
+source venv/Scripts/activate   # Git Bash / Linux / macOS
+venv\Scripts\activate          # Windows CMD / PowerShell
+
+# 3. Install Dependencies
+pip install -r requirements.txt
+
+# 4. Launch Assistant
+python app.py
+```
+
+</details>
+
+<br>
+
+<details>
+
 
 ## 🏁 Conclusion
 
