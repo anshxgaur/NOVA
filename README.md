@@ -38,6 +38,37 @@
 
 ---
 
+## 🎬 Core Features & Logic Flow
+
+### 1. The Intelligence Core (ML Architecture)
+Instead of relying on a single monolithic model, the orchestrator divides and conquers.
+<div align="center">
+  <video src="YOUR_15_SEC_ML_LOGIC_URL_HERE.mp4" width="80%" autoplay loop muted playsinline style="border: 1px solid #444; border-radius: 8px;"></video>
+  <p><i>The system processing and routing a multi-layered reasoning query.</i></p>
+</div>
+
+### 2. The Defense Grid (AI Security Layer)
+Security cannot be an afterthought; it must be the gateway. 
+<div align="center">
+  <video src="YOUR_15_SEC_SECURITY_URL_HERE.mp4" width="80%" autoplay loop muted playsinline style="border: 1px solid #444; border-radius: 8px;"></video>
+  <p><i>Detecting, isolating, and neutralizing an adversarial prompt attack before inference.</i></p>
+</div>
+
+```mermaid
+flowchart LR
+    A[User Query] --> B[Orchestrator]
+    B --> C[Model Router]
+    C --> D1[Reasoning Model]
+    C --> D2[Retrieval Engine]
+    C --> D3[Tool Executor]
+    D1 --> E[Aggregator]
+    D2 --> E
+    D3 --> E
+    E --> F[Final Response]
+```
+    
+
+
 ## 🔄 End-to-End Pipeline Breakdown
 
 ### Step 1: Voice Capture
@@ -138,38 +169,6 @@ As the tech landscape accelerates toward 2028, legacy AI models are vulnerable a
 * **Agentic Orchestration:** Dynamically routes complex queries to specialized sub-models for optimized, low-latency compute.
 * **Zero-Latency Inference:** Fully quantized pipeline ensuring split-second response times without sacrificing data privacy.
 
----
-
-
-## 🎬 Core Features & Logic Flow
-
-### 1. The Intelligence Core (ML Architecture)
-Instead of relying on a single monolithic model, the orchestrator divides and conquers.
-<div align="center">
-  <video src="YOUR_15_SEC_ML_LOGIC_URL_HERE.mp4" width="80%" autoplay loop muted playsinline style="border: 1px solid #444; border-radius: 8px;"></video>
-  <p><i>The system processing and routing a multi-layered reasoning query.</i></p>
-</div>
-
-### 2. The Defense Grid (AI Security Layer)
-Security cannot be an afterthought; it must be the gateway. 
-<div align="center">
-  <video src="YOUR_15_SEC_SECURITY_URL_HERE.mp4" width="80%" autoplay loop muted playsinline style="border: 1px solid #444; border-radius: 8px;"></video>
-  <p><i>Detecting, isolating, and neutralizing an adversarial prompt attack before inference.</i></p>
-</div>
-
-```mermaid
-flowchart LR
-    A[User Query] --> B[Orchestrator]
-    B --> C[Model Router]
-    C --> D1[Reasoning Model]
-    C --> D2[Retrieval Engine]
-    C --> D3[Tool Executor]
-    D1 --> E[Aggregator]
-    D2 --> E
-    D3 --> E
-    E --> F[Final Response]
-```
-    
 ---
 
 ## ⚙️ System Architecture
