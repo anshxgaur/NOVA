@@ -1,4 +1,4 @@
-+![](Bottom_up.svg)
+![](Bottom_up.svg)
 <div align="center">
   
 <p align="center">
