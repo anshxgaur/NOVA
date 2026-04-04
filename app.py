@@ -54,7 +54,7 @@ SYSTEM_PROMPT = (
 # ─────────────────────────────────────────
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "gemma3:1b"
+OLLAMA_MODEL = "llama3.2"
 
 def is_ollama_running():
     try:
@@ -775,9 +775,9 @@ def parse_command():
 
     # ── Volume ──
     percent = parse_percent(command)
-    if any(w in command for w in ["increase volume", "volume up", "louder", "turn up", "inc volume"]):
+    if ("increase" in command or "turn up" in command or "louder" in command) and "volume" in command:
         return control_volume_action("increase", percent)
-    elif any(w in command for w in ["decrease volume", "volume down", "quieter", "lower volume", "turn down", "dec volume"]):
+    elif ("decrease" in command or "turn down" in command or "lower" in command or "quieter" in command) and "volume" in command:
         return control_volume_action("decrease", percent)
     elif any(w in command for w in ["set volume", "volume to"]):
         return control_volume_action("set", percent)
@@ -790,7 +790,7 @@ def parse_command():
         return control_volume_action("mute")
 
     # ── Brightness ──
-    elif any(w in command for w in ["increase brightness", "brightness up", "brighter", "inc brightness"]):
+    elif ("increase" in command or "turn up" in command or "brighter" in command) and "brightness" in command:
         try:
             result = subprocess.run(
                 ['powershell', '-Command',
@@ -803,7 +803,7 @@ def parse_command():
             for _ in range(4): pyautogui.hotkey('fn', 'f12') if system_platform != "Windows" else None
             return jsonify({"status": "Brightness increased", "speak": "Brightness increased."})
 
-    elif any(w in command for w in ["decrease brightness", "brightness down", "dimmer", "dec brightness"]):
+    elif ("decrease" in command or "turn down" in command or "lower" in command or "dimmer" in command) and "brightness" in command:
         try:
             result = subprocess.run(
                 ['powershell', '-Command',

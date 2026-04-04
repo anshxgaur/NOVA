@@ -1085,7 +1085,9 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding: 10vh 0 40px;
+  overflow-y: auto;
   animation: va-in 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1131,7 +1133,7 @@ body {
 /* Text section */
 .va-text-section {
   width: 100%;
-  max-width: 520px;
+  max-width: 680px;
   min-height: 110px;
   display: flex;
   flex-direction: column;
@@ -1162,7 +1164,7 @@ body {
   font-size: 15px;
   color: var(--text-secondary);
   line-height: 1.7;
-  max-width: 480px;
+  max-width: 640px;
   animation: va-text-in 0.3s ease;
 }
 

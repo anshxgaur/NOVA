@@ -2,17 +2,21 @@ import React, {
   useState, useEffect, useRef, useCallback, KeyboardEvent,
 } from 'react';
 import '../styles/NovaTheme.css';
-import { streamGroqDirect, streamOllamaDirect, getNovaStatus, type AISource } from '../runanywhere';
+import { streamGroqDirect, streamOllamaDirect, getNovaStatus, isOllamaOnline, type AISource } from '../runanywhere';
 
 async function sendToNova(
   text: string,
+  image: string,
   aiSource: AISource,
-  history: { role: string; content: string }[],
+  history: { role: string; content: string; image?: string }[],
   onChunk: (chunk: string) => void
 ) {
-  const stream = aiSource === 'ollama'
-    ? streamOllamaDirect([...history, { role: 'user', content: text }])
-    : streamGroqDirect([...history, { role: 'user', content: text }]);
+  let sourceToUse = aiSource;
+  const hasImage = image || history.some(m => m.image);
+
+  const stream = sourceToUse === 'ollama'
+    ? streamOllamaDirect([...history, { role: 'user', content: text, image }])
+    : streamGroqDirect([...history, { role: 'user', content: text, image }]);
   for await (const chunk of stream) {
     onChunk(chunk);
   }
@@ -21,7 +25,7 @@ async function sendToNova(
 /* ═══════════════════════════════════════════════════════════════
    TYPES
    ═══════════════════════════════════════════════════════════════ */
-interface Message { id: string; role: 'user' | 'assistant' | 'system'; text: string; streaming?: boolean; }
+interface Message { id: string; role: 'user' | 'assistant' | 'system'; text: string; streaming?: boolean; image?: string; }
 interface Memory { id: string; text: string; timestamp: string; }
 interface Conversation { id: string; label: string; messages: Message[]; }
 type VoiceState = 'idle' | 'listening' | 'processing' | 'speaking';
@@ -284,6 +288,11 @@ export function NovaInterface() {
     try { return JSON.parse(localStorage.getItem('nova_reminders_v1') || '[]'); } catch { return []; }
   });
 
+  const [uploadedFileText, setUploadedFileText] = useState('');
+  const [uploadedImage, setUploadedImage] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
   const [voiceTranscript, setVoiceTranscript] = useState('');
@@ -388,15 +397,57 @@ export function NovaInterface() {
     setConversations(p => [c, ...p]); setActiveId(c.id); setInputValue('');
   }, []);
 
+  /* ── File Upload ── */
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const res = evt.target?.result as string;
+      if (file.type.startsWith('image/')) {
+        setUploadedImage(res);
+        setUploadedFileName(file.name);
+      } else {
+        setUploadedFileText(res);
+        setUploadedFileName(file.name);
+      }
+    };
+    if (file.type.startsWith('image/')) {
+      reader.readAsDataURL(file);
+    } else {
+      reader.readAsText(file);
+    }
+  }, []);
+
   /* ═══ TEXT SEND CHAT ═══ */
   const send = useCallback(async (textOverride?: string) => {
-    const text = (textOverride ?? inputValue).trim();
-    if (!text || generating) return;
+    const rawText = (textOverride ?? inputValue).trim();
+    if ((!rawText && !uploadedFileText && !uploadedImage) || generating) return;
     setGenerating(true); setInputValue('');
 
+    const text = rawText || (uploadedImage ? 'Analyze the attached image.' : 'Analyze the attached file.');
+    let displayMessage = text;
+    let actualPayload = text;
+
+    if (uploadedFileText) {
+      displayMessage = `📎 ${uploadedFileName}\n${text}`;
+      actualPayload = `Attached File Context (${uploadedFileName}):\n${uploadedFileText}\n\nUser Message: ${text}`;
+    } else if (uploadedImage) {
+      displayMessage = `🖼️ ${uploadedFileName}\n${text}`;
+    }
+
+
+    const currentImage = uploadedImage;
+
     const convId = activeId, uid2 = uid(), uid3 = uid();
-    if (messages.length === 0) updateLabel(convId, text.slice(0, 40) + (text.length > 40 ? '…' : ''));
-    patchMessages(convId, msgs => [...msgs, { id: uid2, role: 'user', text }, { id: uid3, role: 'assistant', text: '', streaming: true }]);
+    if (messages.length === 0) updateLabel(convId, displayMessage.slice(0, 40) + (displayMessage.length > 40 ? '…' : ''));
+    patchMessages(convId, msgs => [...msgs, { id: uid2, role: 'user', text: displayMessage, image: currentImage }, { id: uid3, role: 'assistant', text: '', streaming: true }]);
+
+    const currentPayload = actualPayload;
+    setUploadedFileText('');
+    setUploadedImage('');
+    setUploadedFileName('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
 
     // Check Spotify
     const lower = text.toLowerCase();
@@ -450,24 +501,34 @@ export function NovaInterface() {
       pendingYoutubeRef.current = false;
       const cleanSong = text.replace(/[.?!"']/g, '').trim();
       const query = encodeURIComponent(cleanSong);
-      patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Opening YouTube for "${cleanSong}"...`, streaming: false } : m));
-      window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
+      patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Redirecting to YouTube for "${cleanSong}"...`, streaming: false } : m));
+      window.location.href = `https://www.youtube.com/results?search_query=${query}`;
       setGenerating(false); return;
     }
 
-    const cleanLower = lower.replace(/[^\w\s]/g, '').trim();
-    if (cleanLower === 'play youtube' || cleanLower === 'open youtube' || cleanLower === 'youtube') {
-      pendingYoutubeRef.current = true;
-      patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Which song do you want to play?`, streaming: false } : m));
+    const ytMatchText = lower.match(/(?:play|search(?: for)?)\s+(.*?)(?:\s+(?:on youtube|in youtube))?$/i);
+    if (ytMatchText && ytMatchText[1] && !lower.includes('spotify') && ytMatchText[1].trim() !== 'youtube') {
+      const cleanSong = ytMatchText[1].replace(/[.?!"']/g, '').trim();
+      const query = encodeURIComponent(cleanSong);
+      patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Redirecting to YouTube for "${cleanSong}"...`, streaming: false } : m));
+      window.location.href = `https://www.youtube.com/results?search_query=${query}`;
       setGenerating(false); return;
     }
 
-    if (lower.includes('play') && lower.includes('on spotify')) {
-      const match = lower.match(/play\s+(.*?)\s+on spotify/);
+    if (lower.includes('play youtube') || lower.includes('open youtube') || lower.includes('search youtube') || lower.match(/^youtube$/)) {
+      if (!lower.includes('on spotify') && !lower.includes('spotify')) {
+        pendingYoutubeRef.current = true;
+        patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Which song or video do you want to play?`, streaming: false } : m));
+        setGenerating(false); return;
+      }
+    }
+
+    if (lower.includes('spotify')) {
+      const match = lower.match(/(?:play|search(?: for)?)\s+(.*?)\s+(?:on spotify|in spotify)/i);
       if (match && match[1]) {
-        const song = match[1];
-        patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Opening Spotify for "${song}"...`, streaming: false } : m));
-        window.open(`https://open.spotify.com/search/${encodeURIComponent(song)}`, '_blank');
+        const song = match[1].replace(/[.?!"']/g, '').trim();
+        patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Redirecting to Spotify for "${song}"...`, streaming: false } : m));
+        window.location.href = `https://open.spotify.com/search/${encodeURIComponent(song)}`;
         setGenerating(false); return;
       }
     }
@@ -489,15 +550,15 @@ export function NovaInterface() {
     }
 
     try {
-      const history = messages.map(m => ({ role: m.role as string, content: m.text }));
-      await sendToNova(text, aiSource, history, (chunk) => {
+      const history = messages.map(m => ({ role: m.role as string, content: m.text, image: m.image }));
+      await sendToNova(currentPayload, currentImage, aiSource, history, (chunk) => {
         patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: m.text + chunk } : m));
       });
       patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, streaming: false } : m));
     } catch (err) {
       patchMessages(convId, msgs => msgs.map(m => m.id === uid3 ? { ...m, text: `Error: ${err instanceof Error ? err.message : String(err)}`, streaming: false } : m));
     } finally { setGenerating(false); }
-  }, [inputValue, generating, activeId, messages.length, patchMessages, updateLabel]);
+  }, [inputValue, generating, activeId, messages.length, patchMessages, updateLabel, uploadedFileText, uploadedImage, uploadedFileName]);
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
@@ -737,32 +798,44 @@ export function NovaInterface() {
       const cleanSong = text.replace(/[.?!"']/g, '').trim();
       const query = encodeURIComponent(cleanSong);
       setVoiceResponse(`Playing ${cleanSong} on YouTube`); setVoiceState('speaking');
-      speakText(`Opening YouTube for your song`, () => {
-        setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current();
+      speakText(`Redirecting to YouTube for your song`, () => {
+        window.location.href = `https://www.youtube.com/results?search_query=${query}`;
       });
-      window.open(`https://www.youtube.com/results?search_query=${query}`, '_blank');
       return;
     }
 
-    const cleanLower = lower.replace(/[^\w\s]/g, '').trim();
-
-    if (cleanLower === 'play youtube' || cleanLower === 'open youtube' || cleanLower === 'youtube') {
-      pendingYoutubeRef.current = true;
-      setVoiceResponse(`Which song do you want to play?`); setVoiceState('speaking');
-      speakText(`Which song do you want to play?`, () => {
-        setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current();
+    const ytMatchVoice = lower.match(/(?:play|search(?: for)?)\s+(.*?)(?:\s+(?:on youtube|in youtube))?$/i);
+    if (ytMatchVoice && ytMatchVoice[1] && !lower.includes('spotify') && ytMatchVoice[1].trim() !== 'youtube') {
+      const cleanSong = ytMatchVoice[1].replace(/[.?!"']/g, '').trim();
+      const query = encodeURIComponent(cleanSong);
+      setVoiceResponse(`Playing ${cleanSong} on YouTube`); setVoiceState('speaking');
+      speakText(`Redirecting to YouTube for ${cleanSong}`, () => {
+        window.location.href = `https://www.youtube.com/results?search_query=${query}`;
       });
       return;
+    }
+
+    if (lower.includes('play youtube') || lower.includes('open youtube') || lower.includes('search youtube') || lower.match(/^youtube$/)) {
+      if (!lower.includes('on spotify') && !lower.includes('spotify')) { // avoid conflicts
+        pendingYoutubeRef.current = true;
+        setVoiceResponse(`Which song or video do you want to play?`); setVoiceState('speaking');
+        speakText(`Which song or video do you want to play?`, () => {
+          setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current();
+        });
+        return;
+      }
     }
 
     // Check Spotify
-    if (lower.includes('play') && lower.includes('on spotify')) {
-      const match = lower.match(/play\s+(.*?)\s+on spotify/);
+    if (lower.includes('spotify')) {
+      const match = lower.match(/(?:play|search(?: for)?)\s+(.*?)\s+(?:on spotify|in spotify)/i);
       if (match && match[1]) {
-        const query = encodeURIComponent(match[1]);
-        setVoiceResponse(`Playing ${match[1]} on Spotify`); setVoiceState('speaking');
-        speakText(`Playing ${match[1]} on Spotify`, () => { setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current(); });
-        window.open(`https://open.spotify.com/search/${query}`, '_blank');
+        const cleanSong = match[1].replace(/[.?!"']/g, '').trim();
+        const query = encodeURIComponent(cleanSong);
+        setVoiceResponse(`Playing ${cleanSong} on Spotify`); setVoiceState('speaking');
+        speakText(`Redirecting to Spotify for ${cleanSong}`, () => {
+          window.location.href = `https://open.spotify.com/search/${query}`;
+        });
         return;
       }
     }
@@ -791,8 +864,8 @@ export function NovaInterface() {
     setVoiceState('speaking');
     let acc = '';
     try {
-      const history = messages.map(m => ({ role: m.role as string, content: m.text }));
-      await sendToNova(text, aiSource, history, (chunk) => { acc += chunk; setVoiceResponse(acc); });
+      const history = messages.map(m => ({ role: m.role as string, content: m.text, image: m.image }));
+      await sendToNova(text, '', aiSource, history, (chunk) => { acc += chunk; setVoiceResponse(acc); });
       speakText(acc, () => { setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current(); });
     } catch {
       speakText("I'm sorry, my systems are currently offline.", () => { setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current(); });
@@ -824,12 +897,18 @@ export function NovaInterface() {
 
     recognition.onresult = (event: any) => {
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcript = event.results[i][0].transcript.toLowerCase();
-        if (transcript.includes('wake up nova') || transcript.includes('wakeup nova')) {
+        const t = event.results[i][0].transcript.toLowerCase();
+        if (t.includes('wake up') || t.includes('wakeup') || t.includes('hey nova') || t.includes('hello nova') || t.match(/\bnova\b/)) {
           try { recognition.stop(); } catch { }
           openVoice();
           return;
         }
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      if (!voiceOpenRef.current) {
+        setTimeout(() => startWakeListenerRef.current(), 1000);
       }
     };
 
@@ -1018,11 +1097,21 @@ export function NovaInterface() {
                 value={inputValue} onChange={e => setInputValue(e.target.value)}
                 onKeyDown={onKeyDown} disabled={generating} />
               <div className="input-toolbar">
+                <button className="input-tool-btn" onClick={() => fileInputRef.current?.click()} title="Upload file context">
+                  📎 {uploadedFileName ? (uploadedFileName.length > 15 ? uploadedFileName.substring(0, 15) + '...' : uploadedFileName) : 'Attach File'}
+                </button>
+                <input 
+                  type="file" 
+                  accept=".txt,.md,.json,.csv,.js,.ts,.tsx,.py,.html,.css,image/*" 
+                  style={{ display: 'none' }} 
+                  ref={fileInputRef} 
+                  onChange={handleFileUpload} 
+                />
                 <button className="input-tool-btn" onClick={openVoice}>🎙️ Voice</button>
                 <div className="input-spacer" />
                 {generating
                   ? <button className="send-btn" onClick={() => { cancelRef.current?.abort(); setGenerating(false); }}>⏹</button>
-                  : <button className="send-btn" onClick={() => send()} disabled={!inputValue.trim()}>↑</button>
+                  : <button className="send-btn" onClick={() => send()} disabled={!inputValue.trim() && !uploadedFileText && !uploadedImage}>↑</button>
                 }
               </div>
             </div>
@@ -1077,6 +1166,7 @@ function MessageRow({ msg, onCopy }: { msg: Message; onCopy: (t: string) => void
       </div>
       <div className="message-body">
         <div className="message-role">{isUser ? 'You' : isSys ? 'System' : 'NOVA'}</div>
+        {msg.image && <img src={msg.image} alt="Uploaded" style={{maxWidth: '200px', borderRadius: '8px', marginBottom: '8px'}} />}
         {msg.text === '' && msg.streaming
           ? <div className="typing-indicator">
             <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />

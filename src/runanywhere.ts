@@ -8,7 +8,7 @@ const OLLAMA_URL = 'http://localhost:11434';
 const BACKEND_URL = 'http://localhost:5000';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const OLLAMA_MODEL = 'gemma3:1b';
+const OLLAMA_MODEL = 'llama3.2';
 
 const NOVA_SYSTEM_PROMPT =
   'You are NOVA, a friendly and warm AI companion. Talk like a close friend — casual, fun, and supportive. Keep responses short and natural. Never use markdown formatting like **, *, #, or backticks. Never use emojis. Write in plain text only.';
@@ -73,14 +73,30 @@ export async function getNovaStatus(): Promise<NovaStatus> {
  * Yields text chunks as they arrive (SSE streaming).
  */
 export async function* streamGroqDirect(
-  messages: { role: string; content: string }[]
+  messages: { role: string; content: string; image?: string }[]
 ): AsyncGenerator<string> {
   const apiKey = import.meta.env.VITE_GROQ_API_KEY;
   if (!apiKey) throw new Error('VITE_GROQ_API_KEY not set in .env');
 
+  const hasImage = messages.some(m => m.image);
+  const MODEL = hasImage ? 'llama-3.2-90b-vision-preview' : GROQ_MODEL;
+
+  const formattedMessages = messages.map(m => {
+    if (m.image) {
+      return {
+        role: m.role,
+        content: [
+          { type: 'text', text: m.content },
+          { type: 'image_url', image_url: { url: m.image } }
+        ]
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+
   const fullMessages = [
     { role: 'system', content: NOVA_SYSTEM_PROMPT },
-    ...messages,
+    ...formattedMessages,
   ];
 
   const res = await fetch(GROQ_API_URL, {
@@ -90,7 +106,7 @@ export async function* streamGroqDirect(
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: GROQ_MODEL,
+      model: MODEL,
       messages: fullMessages,
       stream: true,
       max_tokens: 1024,
@@ -129,18 +145,29 @@ export async function* streamGroqDirect(
  * Yields text chunks just like streamGroqDirect does.
  */
 export async function* streamOllamaDirect(
-  messages: { role: string; content: string }[],
+  messages: { role: string; content: string; image?: string }[],
   model = OLLAMA_MODEL
 ): AsyncGenerator<string> {
+  const hasImage = messages.some(m => m.image);
+  const formattedMessages = messages.map(m => {
+    if (m.image) {
+      const b64 = m.image.split(',')[1] || m.image;
+      return { role: m.role, content: m.content, images: [b64] };
+    }
+    return { role: m.role, content: m.content };
+  });
+
+  const USE_MODEL = hasImage ? 'llava' : model;
+
   const fullMessages = [
     { role: 'system', content: NOVA_SYSTEM_PROMPT },
-    ...messages,
+    ...formattedMessages,
   ];
 
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages: fullMessages, stream: true }),
+    body: JSON.stringify({ model: USE_MODEL, messages: fullMessages, stream: true }),
   });
 
   if (!res.ok) throw new Error(`Ollama error: ${res.status}`);
@@ -167,21 +194,21 @@ export async function* streamOllamaDirect(
 
 export function getSourceLabel(source: AISource): string {
   switch (source) {
-    case 'ollama':  return '[CORE: OLLAMA 🦙]';
-    case 'cache':   return '[CORE: CACHE ⚡]';
-    case 'groq':    return '[CORE: GROQ 🌐]';
+    case 'ollama': return '[CORE: OLLAMA 🦙]';
+    case 'cache': return '[CORE: CACHE ⚡]';
+    case 'groq': return '[CORE: GROQ 🌐]';
     case 'offline': return '[CORE: OFFLINE ❌]';
-    default:        return '[CORE: UNKNOWN]';
+    default: return '[CORE: UNKNOWN]';
   }
 }
 
 export function getSourceColor(source: AISource): string {
   switch (source) {
-    case 'ollama':  return '#00ff88';
-    case 'cache':   return '#ffaa00';
-    case 'groq':    return '#ff3cac';
+    case 'ollama': return '#00ff88';
+    case 'cache': return '#ffaa00';
+    case 'groq': return '#ff3cac';
     case 'offline': return '#ff3333';
-    default:        return '#00eaff';
+    default: return '#00eaff';
   }
 }
 
