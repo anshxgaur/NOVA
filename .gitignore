@@ -1,5 +1,8 @@
 # Dependencies
 node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
 
 # Build output
 dist/
@@ -8,12 +11,15 @@ build/
 
 # Environment & API Keys
 .env
-.env.local
+.env.*
+!.env.example
 
 # Python
 venv/
 src/venv/
 __pycache__/
+*.pyc
+*.pyo
 
 # TypeScript
 *.tsbuildinfo
@@ -22,11 +28,24 @@ __pycache__/
 .playwright-mcp/
 
 # Images
-*.png
+# Note: Ensure you check in necessary images like header.png before ignoring all!
+# *.png 
 
 # OS files
 .DS_Store
 Thumbs.db
 
+# Editor directories and files
+.vscode/
+.idea/
+
 # Vite
 *.local
+
+# Project Specific Logs & Local Data State
+cache.json
+conversations.json
+memories.json
+*.log
+tsc.txt
+tsc_errors*

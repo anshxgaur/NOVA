@@ -11,14 +11,39 @@ async function sendToNova(
   history: { role: string; content: string; image?: string }[],
   onChunk: (chunk: string) => void
 ) {
-  let sourceToUse = aiSource;
-  const hasImage = image || history.some(m => m.image);
+  try {
+    const payload = {
+      messages: [...history, { role: 'user', content: text, image }]
+    };
 
-  const stream = sourceToUse === 'ollama'
-    ? streamOllamaDirect([...history, { role: 'user', content: text, image }])
-    : streamGroqDirect([...history, { role: 'user', content: text, image }]);
-  for await (const chunk of stream) {
-    onChunk(chunk);
+    const res = await fetch('http://localhost:5000/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status}`);
+    }
+
+    if (!res.body) {
+      throw new Error("No readable stream available.");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      if (chunk) {
+        onChunk(chunk);
+      }
+    }
+  } catch (error) {
+    console.error("[NOVA Backend Error]:", error);
+    onChunk("\n[Error: Unable to connect to Nova's local logic core. Check if app.py is running.]");
   }
 }
 
@@ -425,7 +450,7 @@ export function NovaInterface() {
     if ((!rawText && !uploadedFileText && !uploadedImage) || generating) return;
     setGenerating(true); setInputValue('');
 
-    const text = rawText || (uploadedImage ? 'Analyze the attached image.' : 'Analyze the attached file.');
+    const text = rawText || (uploadedImage ? 'Please perform OCR on this document and provide a clear, structured summary of its contents. Extract all key information and details.' : 'Analyze the attached file.');
     let displayMessage = text;
     let actualPayload = text;
 
@@ -865,7 +890,7 @@ export function NovaInterface() {
     let acc = '';
     try {
       const history = messages.map(m => ({ role: m.role as string, content: m.text, image: m.image }));
-      await sendToNova(text, '', aiSource, history, (chunk) => { acc += chunk; setVoiceResponse(acc); });
+      await sendToNova(text, uploadedImage, aiSource, history, (chunk) => { acc += chunk; setVoiceResponse(acc); });
       speakText(acc, () => { setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current(); });
     } catch {
       speakText("I'm sorry, my systems are currently offline.", () => { setVoiceState('listening'); isProcessRef.current = false; startListeningMainRef.current(); });
@@ -1157,6 +1182,142 @@ export function NovaInterface() {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MARKDOWN RENDERER — parses code blocks, bold, italic, lists
+   ═══════════════════════════════════════════════════════════════ */
+
+function CodeBlock({ lang, code }: { lang: string; code: string }) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-block-lang">{lang || 'code'}</span>
+        <button className="code-block-copy" onClick={handleCopy}>
+          {copied ? '✓ Copied' : '⎘ Copy'}
+        </button>
+      </div>
+      <pre className="code-block-pre"><code>{code}</code></pre>
+    </div>
+  );
+}
+
+type Segment =
+  | { type: 'code'; lang: string; code: string }
+  | { type: 'text'; content: string };
+
+function parseSegments(text: string): Segment[] {
+  const segments: Segment[] = [];
+  const codeBlockRe = /```(\w*)\n?([\s\S]*?)```/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = codeBlockRe.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    segments.push({ type: 'code', lang: match[1] || '', code: match[2].trimEnd() });
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+function renderInline(text: string): React.ReactNode[] {
+  // Handles **bold**, *italic*, `inline code`
+  const parts: React.ReactNode[] = [];
+  const inlineRe = /(\*\*(.+?)\*\*|\*(.+?)\*|`([^`]+)`)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((m = inlineRe.exec(text)) !== null) {
+    if (m.index > last) {
+      parts.push(<React.Fragment key={idx++}>{text.slice(last, m.index)}</React.Fragment>);
+    }
+    if (m[2]) {
+      parts.push(<strong key={idx++}>{m[2]}</strong>);
+    } else if (m[3]) {
+      parts.push(<em key={idx++}>{m[3]}</em>);
+    } else if (m[4]) {
+      parts.push(<code key={idx++} className="inline-code">{m[4]}</code>);
+    }
+    last = m.index + m[0].length;
+  }
+
+  if (last < text.length) {
+    parts.push(<React.Fragment key={idx++}>{text.slice(last)}</React.Fragment>);
+  }
+  return parts;
+}
+
+function renderTextContent(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let listItems: React.ReactNode[] = [];
+  let keyIdx = 0;
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      nodes.push(<ul key={`ul-${keyIdx++}`} className="md-list">{listItems}</ul>);
+      listItems = [];
+    }
+  };
+
+  lines.forEach((line, i) => {
+    const bulletMatch = line.match(/^(\s*[-*•]|\s*\d+\.)\s+(.*)$/);
+    if (bulletMatch) {
+      listItems.push(
+        <li key={`li-${keyIdx++}`} className="md-list-item">
+          {renderInline(bulletMatch[2])}
+        </li>
+      );
+    } else {
+      flushList();
+      if (line.trim() === '') {
+        if (i < lines.length - 1) {
+          nodes.push(<br key={`br-${keyIdx++}`} />);
+        }
+      } else {
+        nodes.push(
+          <span key={`ln-${keyIdx++}`} className="md-line">
+            {renderInline(line)}
+            {'\n'}
+          </span>
+        );
+      }
+    }
+  });
+
+  flushList();
+  return <>{nodes}</>;
+}
+
+function MarkdownMessage({ text, streaming }: { text: string; streaming?: boolean }) {
+  const segments = parseSegments(text);
+
+  return (
+    <div className={`message-text${streaming ? ' streaming' : ''}`}>
+      {segments.map((seg, i) =>
+        seg.type === 'code'
+          ? <CodeBlock key={i} lang={seg.lang} code={seg.code} />
+          : <span key={i} className="md-text-segment">{renderTextContent(seg.content)}</span>
+      )}
+    </div>
+  );
+}
+
 function MessageRow({ msg, onCopy }: { msg: Message; onCopy: (t: string) => void }) {
   const isUser = msg.role === 'user', isSys = msg.role === 'system';
   return (
@@ -1171,7 +1332,7 @@ function MessageRow({ msg, onCopy }: { msg: Message; onCopy: (t: string) => void
           ? <div className="typing-indicator">
             <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
           </div>
-          : <div className={`message-text${msg.streaming ? ' streaming' : ''}`}>{msg.text}</div>
+          : <MarkdownMessage text={msg.text} streaming={msg.streaming} />
         }
         {!msg.streaming && msg.text && (
           <div className="message-actions">
@@ -1181,4 +1342,4 @@ function MessageRow({ msg, onCopy }: { msg: Message; onCopy: (t: string) => void
       </div>
     </div>
   );
-}
+}

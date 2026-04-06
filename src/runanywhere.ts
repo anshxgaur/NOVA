@@ -8,10 +8,13 @@ const OLLAMA_URL = 'http://localhost:11434';
 const BACKEND_URL = 'http://localhost:5000';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const OLLAMA_MODEL = 'llama3.2';
+const OLLAMA_MODEL = 'llama3.2:1b'; // 1b model is much faster
 
 const NOVA_SYSTEM_PROMPT =
-  'You are NOVA, a friendly and warm AI companion. Talk like a close friend — casual, fun, and supportive. Keep responses short and natural. Never use markdown formatting like **, *, #, or backticks. Never use emojis. Write in plain text only.';
+  'You are NOVA, a friendly and warm AI companion. Talk like a close friend — casual, fun, and supportive. Keep responses short and natural. When providing code, ALWAYS wrap it in markdown code fences with the language name, like ```python ... ``` or ```javascript ... ```. For inline code references, use single backticks. You may use **bold** for emphasis when helpful. Never use emojis.';
+
+const DOCUMENT_SYSTEM_PROMPT =
+  'You are NOVA, a high-precision document analysis expert. Your current task is to perform OCR (Optical Character Recognition) on the attached image and provide a crystal-clear, professional summary. Extract important information, transcribe key sections exactly, and explain what the document is about. You ARE allowed to use markdown (bullet points, bold text, tables) for document analysis to ensure clarity and structure. Be accurate and thorough.';
 
 export type AISource = 'ollama' | 'groq' | 'cache' | 'offline';
 
@@ -80,6 +83,7 @@ export async function* streamGroqDirect(
 
   const hasImage = messages.some(m => m.image);
   const MODEL = hasImage ? 'llama-3.2-90b-vision-preview' : GROQ_MODEL;
+  const sysPrompt = hasImage ? DOCUMENT_SYSTEM_PROMPT : NOVA_SYSTEM_PROMPT;
 
   const formattedMessages = messages.map(m => {
     if (m.image) {
@@ -95,7 +99,7 @@ export async function* streamGroqDirect(
   });
 
   const fullMessages = [
-    { role: 'system', content: NOVA_SYSTEM_PROMPT },
+    { role: 'system', content: sysPrompt },
     ...formattedMessages,
   ];
 
@@ -109,7 +113,7 @@ export async function* streamGroqDirect(
       model: MODEL,
       messages: fullMessages,
       stream: true,
-      max_tokens: 1024,
+      max_tokens: hasImage ? 2048 : 1024,
     }),
   });
 
@@ -158,11 +162,13 @@ export async function* streamOllamaDirect(
   });
 
   const USE_MODEL = hasImage ? 'llava' : model;
+  const sysPrompt = hasImage ? DOCUMENT_SYSTEM_PROMPT : NOVA_SYSTEM_PROMPT;
 
   const fullMessages = [
-    { role: 'system', content: NOVA_SYSTEM_PROMPT },
+    { role: 'system', content: sysPrompt },
     ...formattedMessages,
   ];
+
 
   const res = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',

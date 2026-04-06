@@ -13,9 +13,63 @@ import threading
 import time
 import re
 import requests
+import sqlite3
+import chromadb
 from datetime import datetime
 from pathlib import Path
 from pynput.keyboard import Controller, Key
+
+# ─────────────────────────────────────────
+# LOCAL DATABASES SETUP
+# ─────────────────────────────────────────
+chroma_client = chromadb.PersistentClient(path="./chroma_db_storage")
+nova_memory = chroma_client.get_or_create_collection(name="nova_memory")
+
+conn = sqlite3.connect('nova_database.db', check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS conversations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role TEXT,
+        content TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+''')
+conn.commit()
+
+def save_sql_message(role, content):
+    try:
+        cursor.execute("INSERT INTO conversations (role, content) VALUES (?, ?)", (role, content))
+        conn.commit()
+    except Exception as e:
+        print(f"[NOVA] SQLite ERROR: {e}")
+
+def save_nova_memory(memory_text, category="general"):
+    try:
+        import time
+        mem_id = str(int(time.time() * 1000))
+        nova_memory.add(
+            documents=[memory_text],
+            metadatas=[{"category": category, "timestamp": datetime.now().strftime("%d %b %Y, %H:%M")}],
+            ids=[mem_id]
+        )
+        return mem_id
+    except Exception as e:
+        print(f"[NOVA] Chroma save error: {e}")
+        return None
+
+def get_relevant_memories(query, n_results=2):
+    try:
+        if nova_memory.count() == 0:
+            return []
+        results = nova_memory.query(
+            query_texts=[query],
+            n_results=n_results
+        )
+        return results['documents'][0] if results and 'documents' in results and results['documents'] else []
+    except Exception as e:
+        print(f"[NOVA] Chroma search error: {e}")
+        return []
 
 # Optional volume control
 try:
@@ -45,8 +99,10 @@ SYSTEM_PROMPT = (
     "You are NOVA, a friendly and warm AI companion. "
     "Talk like a close friend — casual, fun, and supportive. "
     "Keep responses short and natural. "
-    "Never use markdown formatting like **, *, #, or backticks. "
-    "Never use emojis. Write in plain text only."
+    "When providing code, ALWAYS wrap it in markdown code fences with the language name, like ```python ... ``` or ```javascript ... ```. "
+    "For inline code references, use single backticks. "
+    "You may use **bold** for emphasis when helpful. "
+    "Never use emojis."
 )
 
 # ─────────────────────────────────────────
@@ -54,13 +110,21 @@ SYSTEM_PROMPT = (
 # ─────────────────────────────────────────
 
 OLLAMA_URL = "http://localhost:11434/api/chat"
-OLLAMA_MODEL = "llama3.2"
+OLLAMA_MODEL = "llama3.2:1b"  # 1b is much faster than the full llama3.2
 
 def is_ollama_running():
     try:
         r = requests.get("http://localhost:11434", timeout=2)
         return r.status_code == 200
-    except:
+    except Exception:
+        return False
+
+def is_internet_online():
+    """Check internet connectivity by pinging a reliable host (Google)."""
+    try:
+        r = requests.get('https://www.google.com', timeout=2)
+        return r.status_code == 200
+    except Exception:
         return False
 
 # ─────────────────────────────────────────
@@ -88,6 +152,11 @@ def get_cached_response(prompt):
     return cache.get(key, None)
 
 def save_to_cache(prompt, response):
+    # Log to databases
+    save_sql_message("user", prompt)
+    save_sql_message("nova", response)
+    save_nova_memory(f"User asked: {prompt} | Nova answered: {response}", category="conversation")
+    
     cache = load_cache()
     key = normalize(prompt)
     cache[key] = {
@@ -107,7 +176,7 @@ def save_to_cache(prompt, response):
 def stream_ollama(messages):
     payload = {"model": OLLAMA_MODEL, "messages": messages, "stream": True}
     with requests.post(OLLAMA_URL, json=payload, stream=True, timeout=60) as r:
-        for line in r.iter_lines():
+        for line in r.iter_lines(decode_unicode=True):
             if line:
                 data = json.loads(line)
                 delta = data.get("message", {}).get("content", "")
@@ -136,7 +205,25 @@ def smart_stream(messages, user_prompt):
         yield cached["response"]
         return
 
-    # ── STEP 2: Ollama local ──
+    # ── STEP 2: Prefer Groq when online ──
+    online = is_internet_online()
+    if online:
+        print("[NOVA] Using Groq (online) 🌐")
+        full_response = ""
+        try:
+            for chunk in stream_groq(messages):
+                full_response += chunk
+                yield chunk
+            save_to_cache(user_prompt, full_response)
+            return
+        except Exception as e:
+            print(f"[NOVA] Groq failed: {e}")
+            if not is_ollama_running():
+                yield "[Error: Groq request failed and Ollama is offline.]"
+                return
+            print("[NOVA] Falling back to Ollama...")
+
+    # ── STEP 3: Ollama local fallback ──
     if is_ollama_running():
         print("[NOVA] Using Ollama local 🦙")
         full_response = ""
@@ -147,18 +234,15 @@ def smart_stream(messages, user_prompt):
             save_to_cache(user_prompt, full_response)
             return
         except Exception as e:
-            print(f"[NOVA] Ollama failed: {e} → falling back to Groq")
-
-    # ── STEP 3: Groq fallback ──
-    print("[NOVA] Using Groq fallback 🌐")
-    full_response = ""
-    try:
-        for chunk in stream_groq(messages):
-            full_response += chunk
-            yield chunk
-        save_to_cache(user_prompt, full_response)
-    except Exception as e:
-        yield f"ERROR: {str(e)}"
+            print(f"[NOVA] Ollama failed: {e}")
+    
+    # ── STEP 4: No service available ──
+    if not online:
+        print("[NOVA] Offline and Ollama not running.")
+        yield "[Error: You are offline and Ollama local service is not reachable.]"
+    else:
+        print("[NOVA] No AI service reachable.")
+        yield "[Error: No AI service reachable. Please check your Groq API key or Ollama status.]"
 
 # ─────────────────────────────────────────
 # KEY MAPPING
@@ -185,24 +269,26 @@ KEY_MAP = {
 }
 
 # ─────────────────────────────────────────
-# MEMORY SYSTEM
+# MEMORY SYSTEM (CHROMA + SQLITE)
 # ─────────────────────────────────────────
-
-MEMORY_FILE = Path("memories.json")
-
-def load_memories():
-    if MEMORY_FILE.exists():
-        with open(MEMORY_FILE, "r") as f:
-            return json.load(f)
-    return []
-
-def save_memories(memories):
-    with open(MEMORY_FILE, "w") as f:
-        json.dump(memories, f, indent=2)
 
 @app.route('/api/memory', methods=['GET'])
 def get_memories():
-    return jsonify({"memories": load_memories()})
+    try:
+        data = nova_memory.get()
+        memories = []
+        if data and 'documents' in data:
+            for idx, doc in enumerate(data['documents']):
+                memories.append({
+                    "id": data['ids'][idx] if 'ids' in data else str(idx),
+                    "text": doc,
+                    "timestamp": data['metadatas'][idx].get("timestamp", "") if 'metadatas' in data and data['metadatas'] else "",
+                    "category": data['metadatas'][idx].get("category", "general") if 'metadatas' in data and data['metadatas'] else "general"
+                })
+        return jsonify({"memories": list(reversed(memories))[:50]})
+    except Exception as e:
+        print(f"Memory get err: {e}")
+        return jsonify({"error": str(e), "memories": []})
 
 @app.route('/api/memory/add', methods=['POST'])
 def add_memory():
@@ -210,30 +296,32 @@ def add_memory():
     text = data.get("text", "").strip()
     if not text:
         return jsonify({"error": "Empty memory"}), 400
-    memories = load_memories()
-    memory = {
-        "id": str(int(time.time() * 1000)),
-        "text": text,
-        "timestamp": datetime.now().strftime("%d %b %Y, %H:%M"),
-        "category": data.get("category", "general")
-    }
-    memories.insert(0, memory)
-    memories = memories[:50]
-    save_memories(memories)
-    return jsonify({"status": "Memory saved", "memory": memory})
+    mem_id = save_nova_memory(text, data.get("category", "general"))
+    return jsonify({"status": "Memory saved", "memory": {"id": mem_id, "text": text}})
 
 @app.route('/api/memory/delete', methods=['POST'])
 def delete_memory():
     data = request.json
     memory_id = data.get("id", "")
-    memories = load_memories()
-    memories = [m for m in memories if m["id"] != memory_id]
-    save_memories(memories)
-    return jsonify({"status": "Memory deleted"})
+    try:
+        nova_memory.delete(ids=[memory_id])
+        return jsonify({"status": "Memory deleted"})
+    except:
+        return jsonify({"error": "Could not delete"})
 
 @app.route('/api/memory/clear', methods=['POST'])
 def clear_memories():
-    save_memories([])
+    try:
+        all_data = nova_memory.get()
+        if all_data and 'ids' in all_data and all_data['ids']:
+            nova_memory.delete(ids=all_data['ids'])
+    except:
+        pass
+    try:
+        cursor.execute("DELETE FROM conversations")
+        conn.commit()
+    except:
+        pass
     return jsonify({"status": "All memories cleared"})
 
 # ─────────────────────────────────────────
@@ -258,18 +346,19 @@ def handle_chat():
     data = request.json
     messages = data.get("messages", [])
 
-    memories = load_memories()
+    user_prompt = messages[-1]["content"] if messages else ""
+
     memory_context = ""
-    if memories:
-        memory_context = "\n\nUser memories (use these to personalize your responses):\n"
-        memory_context += "\n".join([f"- {m['text']}" for m in memories])
+    if user_prompt:
+        relevant = get_relevant_memories(user_prompt, n_results=3)
+        if relevant:
+            memory_context = "\n\nRelevant Context from Past Conversations (Use this to answer questions about the past):\n"
+            memory_context += "\n".join([f"- {m}" for m in relevant])
 
     full_messages = [
         {"role": "system", "content": SYSTEM_PROMPT + memory_context},
         *messages
     ]
-
-    user_prompt = messages[-1]["content"] if messages else ""
 
     return Response(
         stream_with_context(smart_stream(full_messages, user_prompt)),
@@ -630,25 +719,25 @@ def parse_command():
     # ── Memory Commands ──
     if command.startswith("remember ") or command.startswith("nova remember "):
         mem_text = command.replace("nova remember ", "").replace("remember ", "").strip()
-        memories = load_memories()
-        memory = {
-            "id": str(int(time.time() * 1000)),
-            "text": mem_text,
-            "timestamp": datetime.now().strftime("%d %b %Y, %H:%M"),
-            "category": "general"
-        }
-        memories.insert(0, memory)
-        memories = memories[:50]
-        save_memories(memories)
+        save_nova_memory(mem_text, category="general")
         return jsonify({"status": f"Memory saved: {mem_text}", "speak": f"Got it. I'll remember that {mem_text}."})
 
     if "what do you remember" in command or "show memories" in command:
-        memories = load_memories()
-        count = len(memories)
+        try:
+            count = nova_memory.count()
+        except:
+            count = 0
         return jsonify({"status": f"{count} memories stored", "speak": f"I have {count} memories stored."})
 
     if "clear memories" in command or "forget everything" in command:
-        save_memories([])
+        try:
+            all_data = nova_memory.get()
+            if all_data and 'ids' in all_data and all_data['ids']:
+                nova_memory.delete(ids=all_data['ids'])
+            cursor.execute("DELETE FROM conversations")
+            conn.commit()
+        except:
+            pass
         return jsonify({"status": "All memories cleared", "speak": "All memories have been cleared."})
 
     # ── YouTube Commands ──
