@@ -209,10 +209,6 @@ sequenceDiagram
     O-->>U: Final 2028-Spec Response
 ``` 
 
-<div align="center">
-<sub>Built with ❤️ for [HackXtreme]</sub>
-</div>
-
 <br/>
 
 ![gifgithub](https://github.com/user-attachments/assets/54dc1f7a-f327-43ab-ae9c-58c7421eee39)
