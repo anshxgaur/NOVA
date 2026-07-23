@@ -18,6 +18,7 @@
 
 ## 🎯 Problem → Solution Mapping
 
+
 | Problem                                      | Our Solution                                      |
 |---------------------------------------------|--------------------------------------------------|
 | High latency in cloud-based AI              | Local inference pipeline                         |
@@ -187,6 +188,30 @@ flowchart LR
     D3 --> E
     E --> F[Final Response]
 ```
+
+## 📖 Documentation
+
+<p align="center">
+  <a href="./DOCUMENTATION.md">
+    <img src="https://img.shields.io/badge/📚%20Read%20Full%20Documentation-Open-blue?style=for-the-badge">
+  </a>
+</p>
+
+<div align="center">
+
+| Resource | Description |
+|---|---|
+| 📘 **Documentation** | Complete technical explanation |
+| 🏗️ **Architecture** | System design and AI workflow |
+| 🧠 **Memory System** | ChromaDB + SQLite design |
+| 🤖 **AI Router** | Groq + Ollama fallback logic |
+| 🖥️ **Automation** | Desktop control architecture |
+| 🚀 **Setup Guide** | Installation instructions |
+
+</div>
+
+<br>
+
     
 ---
 
